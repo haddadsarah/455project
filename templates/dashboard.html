@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Student dashboard · CipherBreak EDU{% endblock %}
+{% block content %}
+<div class="shell page-stack">
+  <div class="dashboard-hero card">
+    <div>
+      <p class="overline">STUDENT DASHBOARD</p>
+      <h1>Welcome back, <em>{{ user.username }}.</em></h1>
+      <p>{% if current %}Your mission is saved. Continue from {{ current.get_stage_display|lower }}{% if current.current_room %}, room {{ current.current_room }}{% endif %}.{% else %}Choose an adventure to begin your DES training.{% endif %}</p>
+      <div class="actions">
+        {% if current %}<a class="button button-green" href="{% url 'play' current.pk %}">Continue adventure</a>{% endif %}
+        <a class="button {% if current %}button-ghost{% else %}button-green{% endif %}" href="#new-adventure">New adventure</a>
+        <a class="button button-ghost" href="{% url 'lab' %}">Learning laboratory</a>
+      </div>
+    </div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat"><span>Latest mission</span><strong>{% if latest %}{{ latest.percent }}%{% else %}0%{% endif %}</strong></div>
+    <div class="stat"><span>Mission score</span><strong>{{ latest.score|default:"0" }}</strong></div>
+    <div class="stat"><span>Completed missions</span><strong>{{ completed }}</strong></div>
+    <div class="stat"><span>Earned badges</span><strong>{{ badges|length }}</strong></div>
+  </div>
+  <section aria-labelledby="room-map-title">
+    <div class="section-heading"><div><p class="overline">FACILITY MAP</p><h2 id="room-map-title">Mission progress</h2></div></div>
+    {% include "parts/room_map.html" %}
+  </section>
+  <div class="two-col">
+    <section class="card" id="new-adventure">
+      <h2>Start a new adventure</h2>
+      <form class="stack-form" method="post" action="{% url 'start' %}">{% csrf_token %}
+        <fieldset><legend>Choose a mode</legend>
+          <label class="option-label"><input type="radio" name="mode" value="guided" checked> <span><strong>Guided practice</strong><small>NOVA walks you through each operation.</small></span></label>
+          <label class="option-label"><input type="radio" name="mode" value="challenge"> <span><strong>Independent challenge</strong><small>Work through shorter instructions with optional hints.</small></span></label>
+        </fieldset>
+        <label class="inline-option"><input type="checkbox" name="timed" value="1"> Show elapsed time during this mission</label>
+        <button type="submit" class="button button-green">Start adventure</button>
+      </form>
+      <details class="plain-details"><summary>How to play</summary><p>Start with the briefing, follow NOVA’s interactive tour, and complete the terminal challenges in each room. You can replay tutorials, ask for up to three hints per puzzle and inspect concepts in the notebook.</p></details>
+    </section>
+    <section class="card">
+      <h2>Classroom assignments</h2>
+      {% for assignment in assignments %}
+      <form method="post" action="{% url 'start' %}" class="split-row">{% csrf_token %}<input type="hidden" name="assignment" value="{{ assignment.pk }}"><div><strong>{{ assignment.title }}</strong><p>{{ assignment.classroom.name }} · {{ assignment.get_mode_display }}</p></div><button class="button button-small button-ghost" type="submit">Start assignment</button></form>
+      {% empty %}<p>Join a classroom to see assignments from your instructor.</p>{% endfor %}
+      <form class="stack-form" method="post" action="{% url 'join' %}">{% csrf_token %}<label for="join-code">Classroom join code</label><div class="input-row"><input id="join-code" name="code" maxlength="12" required><button class="button button-ghost" type="submit">Join</button></div></form>
+    </section>
+  </div>
+  <div class="two-col">
+    <section class="card"><h2>Attempt history</h2>
+      {% for attempt in attempts %}
+      <article class="split-row"><div><strong>{{ attempt.assignment|default:"Open practice" }}</strong><p>{{ attempt.classification }} · {{ attempt.rooms_completed }}/4 rooms · {{ attempt.score }} pts</p><small>{{ attempt.started_at|date:"M j, Y" }}</small></div><a class="button button-small button-ghost" href="{% if attempt.completed_at %}{% url 'results' attempt.pk %}{% else %}{% url 'play' attempt.pk %}{% endif %}">{% if attempt.completed_at %}Results{% else %}Resume{% endif %}</a></article>
+      {% empty %}<p>Your adventures will appear here.</p>{% endfor %}
+    </section>
+    <section class="card"><h2>Achievements</h2>
+      {% for name, description in badges %}<div class="split-row"><div><strong><span aria-hidden="true">◇</span> {{ name }}</strong><p>{{ description }}</p></div></div>{% empty %}<p>Earn badges by clearing rooms and solving milestone puzzles.</p>{% endfor %}
+    </section>
+  </div>
+  {% if topics %}<section class="card"><h2>Latest mission by learning objective</h2>{% include "parts/topics.html" %}</section>{% endif %}
+</div>
+{% endblock %}

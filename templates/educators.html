@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}For educators · CipherBreak EDU{% endblock %}
+{% block content %}
+<div class="shell page-stack">
+  <section class="page-heading wide">
+    <p class="overline">FOR EDUCATORS</p>
+    <h1>Teach the <em>cipher in motion.</em></h1>
+    <p>Follow the values behind the DES diagrams. CipherBreak EDU gives students practice with fictional data and gives instructors a tool for live demonstrations and classroom assessment.</p>
+    <div class="actions"><a class="button button-green" href="{% url 'lab' %}">Open DES laboratory</a><a class="button button-ghost" href="{% url 'login' %}">Instructor sign in</a></div>
+  </section>
+  <section class="card">
+    <h2>A 25-minute classroom activity</h2>
+    <ol class="lesson-list">
+      <li><strong>5 min · Set the baseline.</strong> Open the optional pre-assessment and discuss the difference between the block width and effective key length.</li>
+      <li><strong>5 min · Walk through the Hex Gate and Key Vault.</strong> Build a 64-bit block, follow IP, and demonstrate PC-1, rotating C and D, and PC-2.</li>
+      <li><strong>10 min · Investigate the Reactor and Decryption Chamber.</strong> Demonstrate the S-box lookup, inspect a Feistel round and trace the reversed decryption keys.</li>
+      <li><strong>5 min · Compare and discuss.</strong> Use the post-assessment to review the same outcomes and explain the 56-bit key limitation. Assign a full mission for independent practice.</li>
+    </ol>
+  </section>
+  <div class="three-col">
+    <section class="card"><h2>Classroom assignments</h2><p>Share a join code and set a required mode. The dashboard distinguishes guided practice, independent challenges and assisted challenges.</p></section>
+    <section class="card"><h2>Learning evidence</h2><p>Review room completion, accuracy, hints and optional assessment results. Download an assignment CSV for your own class.</p></section>
+    <section class="card"><h2>Live demonstration</h2><p>Start in any room with your own block and key or a known-answer example. Select a round, expand its S-boxes, and replay the operation sequence.</p></section>
+  </div>
+  <section class="card">
+    <h2>Proposed adoption model</h2>
+    <p>A free student demonstration and classroom trial could lead to department licensing, with additional cryptography modules developed around university curricula.</p>
+  </section>
+</div>
+{% endblock %}

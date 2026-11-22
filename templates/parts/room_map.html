@@ -1,0 +1,17 @@
+<div class="mission-map">
+  {% for item in rooms %}
+    <article class="map-card theme-{{ item.slug }} {% if item.status == 'Locked' %}map-locked{% endif %}">
+      <span class="map-icon" aria-hidden="true">{{ item.glyph }}</span>
+      <div>
+        <p class="map-status {% if item.status == 'Complete' %}green{% endif %}">0{{ item.number }} · {{ item.status }}</p>
+        <h3>{{ item.short }}</h3>
+        <p>{{ item.topic }}</p>
+        {% if item.status == "Complete" %}<p>{{ item.score }} pts{% for badge in item.badges %} · {{ badge }}{% endfor %}</p>{% endif %}
+        {% if item.status == "Locked" %}<details><summary>Unlock requirement</summary><p>Complete {{ item.requirement }}.</p></details>{% endif %}
+      </div>
+      {% if interactive and item.status != 'Locked' %}
+        <form method="post" action="{% url 'navigate' attempt.pk %}">{% csrf_token %}<input type="hidden" name="action" value="enter"><input type="hidden" name="room" value="{{ item.number }}"><button class="button button-small button-ghost" type="submit">{% if item.status == "Complete" %}Revisit{% else %}Enter{% endif %}<span class="sr-only"> {{ item.short }}</span></button></form>
+      {% endif %}
+    </article>
+  {% endfor %}
+</div>

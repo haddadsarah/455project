@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Mission results · CipherBreak EDU{% endblock %}
+{% block content %}
+<div class="shell page-stack">
+  <section class="scene scene-room theme-exit {% if attempt.completed_at %}scene-open{% endif %}">
+    <div class="scene-copy"><p class="overline">{{ attempt.classification }}{% if attempt.assignment %} · {{ attempt.assignment }}{% endif %}</p>
+    <h1>{% if attempt.completed_at %}You escaped <em>the Cipher Lab!</em>{% else %}Mission in <em>progress.</em>{% endif %}</h1>
+    <p>{% if attempt.completed_at %}NOVA · “The exit is open. You traced DES all the way from bytes to subkeys, through the Feistel network and back to the original message.”{% else %}Your current progress and learning results are saved.{% endif %}</p>
+    <div class="actions">
+      {% if not attempt.completed_at %}<a class="button button-green" href="{% url 'play' attempt.pk %}">Resume adventure</a>{% elif not assessments.post %}<a class="button button-green" href="{% url 'assessment' attempt.pk 'post' %}">Optional post-assessment</a>{% endif %}
+      <a class="button button-ghost" href="{% url 'attempt_lab' attempt.pk %}">Explore DES</a>
+      <a class="button button-ghost" href="{% url 'dashboard' %}#new-adventure">{% if attempt.completed_at %}Play again{% else %}Dashboard{% endif %}</a>
+    </div></div>
+  </section>
+  <div class="stat-grid">
+    <div class="stat"><span>Final score</span><strong>{{ attempt.score }}</strong></div>
+    <div class="stat"><span>Rooms cleared</span><strong>{{ attempt.rooms_completed }}/4</strong></div>
+    <div class="stat"><span>Elapsed time</span><strong>{{ duration }}</strong></div>
+    <div class="stat"><span>Hints · mistakes</span><strong>{{ hints }} · {{ mistakes }}</strong></div>
+  </div>
+  <section><h2>Rooms and achievements</h2>{% include "parts/room_map.html" %}</section>
+  <section class="card"><h2>Learning outcomes</h2><p>Revisit objectives with recorded mistakes to practise the operations again.</p>{% include "parts/topics.html" %}</section>
+  {% if assessments %}<section class="card"><h2>Assessment results</h2><div class="actions">
+    {% if assessments.pre %}<a class="button button-ghost" href="{% url 'assessment' attempt.pk 'pre' %}">Pre-assessment · {{ assessments.pre.score }}/7</a>{% endif %}
+    {% if assessments.post %}<a class="button button-ghost" href="{% url 'assessment' attempt.pk 'post' %}">Post-assessment · {{ assessments.post.score }}/7</a>{% endif %}
+    {% if assessment_change is not None %}<p>Change: {{ assessment_change|stringformat:"+d" }} of 7</p>{% endif %}
+  </div></section>{% endif %}
+</div>
+{% endblock %}

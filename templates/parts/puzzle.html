@@ -1,0 +1,68 @@
+{% if puzzle.data.signals %}{% include "parts/values.html" with values=puzzle.data.signals %}{% endif %}
+{% if puzzle.data.bytes %}
+  <div class="byte-list" aria-label="Eight bytes in hexadecimal">{% for byte in puzzle.data.bytes %}<code>{{ byte }}</code>{% endfor %}</div>
+{% endif %}
+{% if puzzle.widget == "ascii" %}
+  <div class="widget">
+    <p class="widget-label">Tap a character to inspect its byte.</p>
+    <div class="byte-list" aria-label="Access code">{% for character, decimal, binary, hex in puzzle.data.characters %}
+      <button type="button" data-byte="{{ character }}|{{ decimal }}|{{ binary }}|{{ hex }}" aria-pressed="false" aria-label="Inspect character {{ forloop.counter }}, {{ character }}">{{ character }}</button>
+    {% endfor %}</div>
+    <p class="inspect-output" data-byte-output aria-live="polite">Select a character.</p>
+  </div>
+{% elif puzzle.widget == "mapping" %}
+  <div class="widget" data-mapping data-source="{{ puzzle.data.source }}" data-width="{{ puzzle.data.width }}">
+    <p class="widget-label">{{ puzzle.data.label }} mapping · Select an output position to trace its source bit.</p>
+    <p>Input <code>{{ puzzle.data.source }}</code></p>
+    <div class="mapping-grid" data-roving data-columns="8" aria-label="{{ puzzle.data.label }} output positions">
+    {% for output, source in puzzle.data.mapping %}<button type="button" {% if output != puzzle.data.target %}tabindex="-1"{% endif %} data-output="{{ output }}" data-source-bit="{{ source }}" {% if output == puzzle.data.target %}class="target-bit"{% endif %} aria-label="Trace output bit {{ output }}">{{ output }}</button>{% endfor %}
+    </div>
+    <p class="inspect-output" data-mapping-output aria-live="polite">Output position {{ puzzle.data.target }} is highlighted.</p>
+  </div>
+{% elif puzzle.widget == "parity" %}
+  <div class="widget">
+    <p>Original key <code>{{ puzzle.data.key }}</code></p>
+    <p class="widget-label">Every eighth position is reserved for odd parity.</p>
+    <div class="bit-grid" aria-label="64 key bits, every eighth bit is parity">
+      {% for index, bit in puzzle.data.bits %}<span {% if index|divisibleby:8 %}class="parity-bit" aria-label="Position {{ index }}, parity bit {{ bit }}"{% else %}aria-label="Position {{ index }}, value {{ bit }}"{% endif %} title="Position {{ index }}">{{ bit }}</span>{% endfor %}
+    </div>
+  </div>
+{% elif puzzle.widget == "rotation" %}
+  <div class="widget rotation-widget" data-rotation data-c="{{ puzzle.data.c_bits }}" data-d="{{ puzzle.data.d_bits }}">
+    <div class="disk-pair"><div class="disk"><span>C</span></div><div class="disk"><span>D</span></div></div>
+    <p class="widget-label">Both disks start with the previous round's bits. Select a shift below to rotate them.</p>
+    <div class="rotation-values mono" aria-live="polite"><p>C <code data-c-out>{{ puzzle.data.c_bits }}</code></p><p>D <code data-d-out>{{ puzzle.data.d_bits }}</code></p></div>
+    <details class="plain-details"><summary>DES shift schedule</summary><div class="shift-grid">{% for n, shift in puzzle.data.schedule %}<div {% if n == puzzle.data.round.number %}class="target-bit"{% endif %}><small>R{{ n }}</small><strong>{{ shift }}</strong></div>{% endfor %}</div></details>
+  </div>
+{% elif puzzle.widget == "xor" %}
+  <div class="xor-circuit" aria-label="Compare the two highlighted input bits"><span>{{ puzzle.data.a }}</span><i></i><strong>⊕</strong><i></i><span>{{ puzzle.data.b }}</span></div>
+  <details class="plain-details"><summary>XOR truth table</summary><p class="mono">0 ⊕ 0 = 0 · 0 ⊕ 1 = 1 · 1 ⊕ 0 = 1 · 1 ⊕ 1 = 0</p></details>
+{% elif puzzle.widget == "recover" %}
+  <details class="plain-details"><summary>ASCII reference</summary><div class="ascii-grid">{% for hex, char in puzzle.data.reference %}<p><code>{{ hex }}</code> {{ char }}</p>{% endfor %}</div></details>
+{% elif puzzle.widget == "sbox" %}
+  <div class="widget">
+    <p class="widget-label">S{{ puzzle.data.box.number }} input · Outer bits select row, middle bits select column.</p>
+    <div class="sbox-input" aria-label="Input {{ puzzle.data.box.input }}">{% for bit in puzzle.data.box.input %}<span {% if forloop.first or forloop.last %}class="row-bit"{% else %}class="column-bit"{% endif %}>{{ bit }}</span>{% endfor %}</div>
+    <div class="table-scroll sbox-scroll">
+      <table class="sbox" data-roving data-columns="16">
+        <caption class="sr-only">S{{ puzzle.data.box.number }} lookup table</caption>
+        <thead><tr><th scope="col">R / C</th>{% for col in puzzle.data.columns %}<th scope="col">{{ col }}</th>{% endfor %}</tr></thead>
+        <tbody>{% for row, values in puzzle.data.table %}<tr><th scope="row">{{ row }}</th>
+          {% for value in values %}<td>{% if state.solved %}{{ value }}{% else %}<button type="submit" name="answer" value="{{ row }},{{ forloop.counter0 }}" {% if row != 0 or not forloop.first %}tabindex="-1"{% endif %} aria-label="Row {{ row }}, column {{ forloop.counter0 }}, value {{ value }}">{{ value }}</button>{% endif %}</td>{% endfor %}
+        </tr>{% endfor %}</tbody>
+      </table>
+    </div>
+    {% if not state.solved %}<div class="sbox-confirm" hidden><p data-sbox-choice aria-live="polite">Select a cell.</p><button class="button button-green" type="submit" disabled>Verify S-box cell</button></div>{% endif %}
+  </div>
+{% endif %}
+{% if state.solved %}
+  <p class="solved-feedback"><span aria-hidden="true">✓</span> {{ puzzle.feedback }} <strong>+{{ state.score }} pts</strong></p>
+{% elif puzzle.choices %}
+  <fieldset class="answer-options"><legend class="sr-only">Choose an answer</legend>
+  {% for code, label in puzzle.choices %}<label class="option-label"><input type="radio" name="answer" value="{{ code }}" {% if puzzle.widget == 'rotation' %}data-shift="{{ code }}"{% endif %} required> <span>{{ label }}</span></label>{% endfor %}
+  </fieldset>
+  <button class="button button-green" type="submit">Verify answer</button>
+{% elif puzzle.widget != "sbox" %}
+  <label class="widget-label" for="answer-field">{% if puzzle.widget == 'pair' %}New left and right halves{% elif puzzle.widget == 'recover' %}Eight-character access code{% else %}Hexadecimal answer{% endif %}</label>
+  <div class="input-row"><input id="answer-field" class="mono answer-field" name="answer" type="text" autocapitalize="characters" spellcheck="false" maxlength="32" {% if puzzle.widget == 'pair' %}placeholder="00000000 00000000"{% endif %} required><button class="button button-green" type="submit">Verify answer</button></div>
+{% endif %}

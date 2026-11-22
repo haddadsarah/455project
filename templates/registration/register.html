@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Create account · CipherBreak EDU{% endblock %}
+{% block content %}
+<div class="shell auth-layout">
+  <section class="auth-art" aria-label="CipherBreak Research Facility"><p class="overline">CIPHERBREAK RESEARCH FACILITY</p><h1>Your first <em>mission.</em></h1></section>
+  <section class="card auth-card">
+    <h2>Create a student account</h2>
+    <form method="post" class="stack-form">{% csrf_token %}{{ form.as_p }}<button class="button button-green" type="submit">Create account</button></form>
+    <p>Already registered? <a href="{% url 'login' %}">Sign in</a></p>
+  </section>
+</div>
+{% endblock %}
