@@ -1,119 +1,262 @@
-# CipherBreak EDU · The 16-Round Escape
+# CipherBreak EDU — The 16-Round Escape
 
-A browser-based DES escape room for EECE 455 (Cryptography and Network Security) at the American University of Beirut. Four rooms take learners from an ASCII access code through key generation, a Feistel round, decryption, and a final security verdict. NOVA provides fictional story dialogue, interactive tutorials, and three levels of hints.
+*Learn the cipher. Break the challenge. Understand the weakness.*
 
-DES is a historical teaching example. Its 64-bit key representation has 56 effective key bits, which makes exhaustive search feasible. Real systems should use current, appropriate authenticated-encryption standards.
+An educational escape-room game that teaches DES (EECE 455, American University of Beirut).
+Players escape a locked cryptography lab by solving four rooms, each built on real DES
+calculations made by our own DES engine with full tracing.
 
-## Run locally
+> **DES is not secure.** It is used here only as a teaching tool. Its 56-bit effective key can be
+> found by exhaustive search. Real systems should use current authenticated encryption (e.g. AES-GCM).
 
-Use Python 3.10 or later and a current browser with JavaScript enabled. The app needs no Node build, API key, or external service.
+---
 
-```sh
-git clone https://github.com/haddadsarah/455project.git
-cd 455project
+## Merged application
+
+This repository runs one Django game with one authoritative DES engine. The public prototype supplied the cinematic facility artwork, typography and visual direction. The uploaded project supplied the accounts, game services, machinery, tutorials, DES trace engine, laboratory, classroom analytics and tests. The first-person room and overhead **View** toggle share the same player movement, server attempt, inventory, room locks and machines.
+
+For an existing database from the previous repository edition, stop the server and back up `db.sqlite3`. Then run `python manage.py migrate` and `python manage.py import_legacy_progress`. The import is repeatable and leaves the original tables intact. It carries over users, coursework, attempt inputs, room completions, scores, badges and recorded performance. The machines now use the richer puzzle formats of the merged game. Progress from the departing browser-only preview stays in that browser and is not treated as authenticated classroom evidence.
+
+The merged application runs locally. The old Sites URL is the archived browser prototype and cannot host this Django backend.
+
+## 1. Run it locally (about 2 minutes)
+
+Requires Python 3.10+.
+
+```bash
+cd CipherBreak-EDU
 python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
+# Windows: .venv\Scripts\activate     macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
 python manage.py migrate
+python manage.py seed_demo          # fictional demo accounts + classroom
 python manage.py runserver
 ```
 
-On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1`. Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The SQLite database is created in the checkout and ignored by Git.
+Open **http://127.0.0.1:8000/**.
 
-Create a student account in the browser. To grant instructor tools to an approved account, create a separate account, then run `python manage.py create_instructor USERNAME`. Account registration always starts with student access.
+### Demo accounts (local development only)
 
-## Demo accounts and reset
+All demo accounts use the password **`cipherbreak-demo-2026`** (set `CIPHERBREAK_DEMO_PASSWORD`
+before running `seed_demo` to choose another). The command and demo logins are disabled outside DEBUG mode.
 
-Run this on the development database before the presentation.
+| Username | Role | State |
+|---|---|---|
+| `prof_demo` | Instructor | Owns the classroom "EECE 455 — Demo Section" (join code `DEMO55`) |
+| `student_demo` | Student | Fresh account, use it for the live demo |
+| `student_ali` | Student | Completed in Guided mode, pre + post assessment |
+| `student_maya` | Student | Completed in Challenge mode, pre + post assessment |
+| `student_omar` | Student | In progress (Rooms 1–2 done), shows saved progress / Resume |
+| `student_lea` | Student | Joined the class, not started |
 
-```sh
-python manage.py demo_data
+Each demo account has a fictional email `<username>@example.com`, so you can try **Forgot your password?**.
+
+### Password reset (local demo)
+
+The sign-in page has **Forgot your password?**. For the local demo, Django's *console email backend* is
+used: no real email is sent, and the reset email (with its link) is **printed in the terminal running
+`runserver`**. Copy the link into the browser to choose a new password. Students who registered without
+an email can't reset by email, but any signed-in user can use **Change my password** on the dashboard.
+For a real deployment, set `DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend`,
+`DJANGO_EMAIL_HOST` and `DJANGO_DEFAULT_FROM_EMAIL`.
+
+Instructor invitation code for testing instructor sign-up: **`AUB-EECE455-DEMO`** (5 uses).
+The simulated students' data was produced by playing through the real game rules
+(`game/autoplay.py`); it is fictional sample data, not real student results.
+
+### Reset demo data
+
+```bash
+python manage.py seed_demo --reset   # delete ONLY demo accounts/classroom, then recreate
+python manage.py seed_demo --remove  # delete demo data only
+```
+Only accounts flagged as demo (created by this command) are ever deleted. To wipe everything,
+keep your existing database and run `python manage.py seed_demo --reset` to replace only the tagged local fixtures.
+
+### Run the tests
+
+```bash
+python manage.py test        # 74 tests: DES engine, game rules, persistence, security, instructor tools
+```
+`pycryptodome` is used **only** in one test to cross-check our DES against an independent library.
+
+Optional: `python manage.py createsuperuser` gives access to `/admin/` (e.g. to create new instructor invitation codes).
+
+---
+
+## 2. Suggested 15–20 minute demonstration
+
+1. Landing page → "For Educators" (product/business pitch).
+2. Sign in as `student_omar` → dashboard shows saved progress, badges, statistics → **Resume Adventure**.
+3. Sign out, sign in as `student_demo` → **Start New Adventure (Guided)** → title screen → lockdown intro
+   with NOVA → walk around the lobby (WASD/arrows or click) → mission briefing at the holotable.
+4. Room 1 (Hex Gate): walk to each machine and press E — letter plates + hex dials (ASCII → hex),
+   block inspector (bit switches), IP patch panel (patch a cable), laser splitter (L0/R0). The gate opens.
+5. Room 2 (Key Vault): tag the parity bits, PC-1 patch panel, splitter (C0/D0), rotate the C/D rotor disks,
+   PC-2, pull the forge lever to make K1…K16; the key archive terminal shows every key round.
+6. Room 3 (Round Reactor): E sockets, XOR gate wiring, S-box grid, P patch panel, Feistel router,
+   ignite the reactor core (all 16 rounds, round log with every operation).
+7. Room 4: drag key cartridges into reverse order, the decryption engine, the exit keypad's letter wheels,
+   NOVA's security questions → walk out of the exit → escape screen.
+8. Results page (mastered vs needs-practice concepts).
+9. Sign in as `prof_demo` → classroom analytics, pre/post comparison, CSV export.
+10. Instructor → **Demonstration mode** (open any room with your own message/key) and the **DES Lab** lecture view.
+
+Tip: to skip ahead during a live talk, use instructor demonstration mode to open Room 3 directly.
+
+---
+
+## 3. Features
+
+**Game.** A 2D pixel-art escape room drawn on a canvas (all art is generated in code; no image files).
+Title screen, lockdown intro, then you walk your character through a lobby and four themed rooms with
+**WASD / arrow keys or click-to-walk** (on-screen pad on touch screens). NOVA is a floating drone that follows
+you and talks in speech bubbles and a dialogue box. Walk up to a machine and press **E** (or click it) to use it.
+Every challenge is an in-world machine operated with game mechanics: hex dials, letter plates, bit switches,
+a patch cable for IP / PC-1 / PC-2 / P, a laser splitter, rotor disks, a key forge lever, E sockets, XOR gate
+wiring, an S-box grid, a Feistel router, a reactor core, drag-and-drop key cartridges, letter wheels, and
+NOVA's dialogue questions. Juicy feedback: "ACCESS GRANTED" stamp, sparks, screen shake, gate-opening
+animation, item pickups, synthesized sound effects. HUD with score, escape progress, room locks and timer;
+inventory of recovered items (code card, block, halves, key, 16 key chips, ciphertext tape, exit code);
+archive terminals in Rooms 2–4 that show the full key schedule and every encryption/decryption round;
+facility map (also opens any machine without walking, for keyboard/screen-reader users), pause menu
+(Esc), escape screen and results. 4 rooms / 21 challenges (one optional bonus). Locked doors and machines
+explain what to do first, and an amber marker always points to the next machine.
+
+**Teaching.** NOVA's in-world onboarding teaches the controls by doing (move, then use the holotable),
+and every room starts with a short NOVA briefing of the DES step it covers. Every challenge has its own interactive tutorial that explains, demonstrates,
+requires an action (e.g. "rotate the C disk once") or a small practice question with checked feedback
+before moving on (it highlights the real parts of the machine). Auto-starts in Guided mode, available on demand in Challenge mode. Three hint levels
+(concept → similar example → walkthrough) that teach the method. Targeted mistake feedback
+(e.g. "You rotated by 1; round 3 needs a shift of 2"). Learning Notebook with 14 pages.
+
+**Scoring.** Up to 100 per challenge, −10 per wrong answer, hints −10/−20/−30 in Challenge mode
+(free in Guided), +50 per room; never negative; awarded once; format errors cost nothing. Six achievements.
+Optional timer display (no time limit). Server-side validation of everything.
+
+**Replayability.** Each adventure gets a random seed → new message code, key (odd parity, no weak keys),
+exit code, selected round, S-box groups, table positions, key-rotation round, decryption round and
+shuffled options. In Room 4 the decryption keys are ordered by **drag-and-drop** onto the 16 round slots
+(drag between slots to swap); clicking or pressing Enter on a key still places it in the next empty slot,
+and clicking a filled slot sends its key back. Parameters are stored with the attempt, so refresh/resume never changes puzzles.
+Recently used codes are avoided for the same student.
+
+**Accounts & persistence.** Django authentication (hashed passwords, sessions, CSRF). Instructor role only
+via invitation code. Progress saved after every action (room entry, puzzle open, submission, hint, tutorial).
+Previous attempts are kept.
+
+**DES Lab** (works without playing): any hex block/key, encrypt/decrypt, ASCII → hex helper, rounds 1–16 with
+every operation, expandable S-box lookups, full key schedule, all DES tables, copy buttons, standard test
+vectors, round animation replay, show/hide explanations, lecture view for instructors. If a student opens it
+during an *independent* Challenge attempt, they are warned and that attempt is relabelled as practice.
+
+**Instructor tools.** Classrooms with join codes, assignments (guided/challenge/any required), per-student
+progress (rooms, score, accuracy per LO1–LO7, attempts, hints, time, pre/post), class analytics (enrolled,
+started, completed, completion rate, averages, most-missed concepts, pre vs post by objective), CSV export,
+demonstration mode. Instructors can **rename a classroom / regenerate its join code**, **delete a classroom**
+(type its name to confirm), **remove a student** from a classroom and **delete assignments**; students keep
+their own accounts and game history in every case. Instructors only see and manage their own classrooms.
+
+**Sound & music.** Original background music generated live in the browser with the Web Audio API
+(a slow ambient chord loop with a soft arpeggio; no audio files, nothing copyrighted). It is **off by
+default**: turn it on with **♫ Music** on the title screen or the game's top bar or in Settings (with a volume slider). Sound
+effects have their own **Sounds** toggle, also off by default. Choices are remembered in the browser.
+
+**Accessibility.** Keyboard navigation, visible focus, ARIA labels/live regions, feedback in text not just
+colour, reduced-motion (system setting + in-game toggle), larger-text option, responsive desktop/mobile.
+Sound effects are original synthesized tones, muted by default.
+
+---
+
+## 4. Architecture
+
+```
+cipherbreak/        Django settings and URL routes
+des_engine/         Pure-Python DES + tracing (no Django dependency)   ← algorithm
+  tables.py         Standard FIPS 46-3 tables (IP, IP⁻¹, E, P, PC-1, PC-2, shifts, S1–S8)
+  core.py           validation, key_schedule(), feistel(), des_trace(), encrypt(), decrypt()
+  tests/            DES unit tests
+game/               The game                                              ← game logic
+  generator.py      seeded generation of a new adventure
+  puzzles.py        the 21 challenges: view data, fields, answers (from des_engine), hints, feedback
+  services.py       progression, scoring, hints, achievements, results (all server-side rules)
+  assessments.py    pre/post question bank (one question per learning objective)
+  notebook.py       Learning Notebook content
+  autoplay.py       plays an attempt through the real rules (tests + demo data)
+  models.py         Attempt, RoomProgress, PuzzleProgress, PuzzleSubmission, HintUsage,
+                    UserAchievement, AssessmentResult
+  views.py          pages + JSON API used by the game screen
+  management/commands/seed_demo.py
+  tests/            game, persistence, security, instructor tests
+accounts/           Profile (role, notebook), InstructorInvite, TutorialCompletion, registration
+classroom/          Classroom, Membership, Assignment; instructor dashboard, analytics, CSV, demo mode
+lab/                DES Learning Laboratory page + /api/des/
+templates/          HTML pages
+static/css/app.css  visual theme, rooms, animations, responsive + reduced-motion rules
+static/css/game.css game art direction: HUD, machines, title/escape screens
+static/js/          world.js (canvas pixel-art engine: rooms, player, NOVA, doors, lighting, particles),
+                    machines.js (the puzzle machines), play.js (game flow, HUD, NOVA, inventory, menus),
+                    common.js (API, sound, settings), tutorial.js (overlay engine),
+                    trace.js (round & key explorers), lab.js
 ```
 
-The command prints generated passwords and creates a fictional classroom with both assignment modes. It also populates completed and in-progress examples using the same game logic. Keep the printed passwords local.
+The browser never receives an answer before the challenge is solved; it sends answers to
+`/api/attempt/<id>/puzzle/<pid>/submit/` and displays the server's verdict.
 
-| Account | What to show |
-| --- | --- |
-| `demo-student` | Start fresh, complete onboarding and enter the Hex Gate |
-| `demo-reactor` | Resume in Room 3, work an XOR or S-box puzzle and show the trace |
-| `demo-graduate` | Review the finished escape, six badges and assessment results |
-| `demo-instructor` | Inspect the fictional class, export a CSV and open any room in demonstration mode |
+### Suggested split for a four-person team
+- **Algorithm & implementation:** `des_engine/`, `game/puzzles.py`, `game/services.py`.
+- **UI & technical diagrams:** `templates/`, `static/css/`, `static/js/` (world in `world.js`, machines in `machines.js`, explorers in `trace.js`).
+- **Testing & verification:** `des_engine/tests/`, `game/tests/`, manual browser checklist below.
+- **Report & presentation:** this README, the Notebook content, the demo script in section 2.
 
-Run `python manage.py demo_data --reset` to replace the marked demo accounts and rotate their passwords. It preserves other accounts and stops if demo and non-demo classroom memberships are linked. If you need an untouched database for automated browser tests, run them from a separate checkout.
+---
 
-A 15–20 minute presentation can begin with the landing page and the Hex Gate tutorial. Switch to the instructor demonstration for PC-1, circular shifts and PC-2. Resume the reactor mission for a mapped bit or S-box cell. Use the lab to show all 16 rounds, decrypt the known-answer ciphertext and explain the key-length limitation. Finish with the graduate’s results and the instructor’s assignment report.
+## 5. How each DES operation is implemented (`des_engine/core.py`)
 
-## How gameplay and reporting work
+Bits are handled as strings of `'0'/'1'`, bit 1 = leftmost, exactly as numbered in the standard, so
+every intermediate value can be shown to students as both hex and binary.
 
-- Each mission has a stored seed and generator version. The seed sets the block, odd-parity key, selected rounds and puzzle inputs. Signing out or refreshing preserves the mission and scores.
-- Guided practice provides worked examples. Independent challenges offer optional hints. Viewing the mission’s full trace during an independent challenge flags it as assisted. Instructor reports count eligible completions for the required mode.
-- A correct puzzle earns 100 base points, plus 10 for a first try. Mistakes deduct 10 each. The highest hint level deducts 10, 20, or 30. The minimum puzzle score is zero. Each cleared room earns 50 additional points. The reactor includes one optional S-box challenge.
-- Each classroom assignment has its own roster report. For each student, it displays the most recent eligible completed attempt, then the most recent eligible in-progress attempt, then an assisted attempt when that is all that exists. The CSV includes nicknames, classification, results, and learning objectives. Paired pre/post summaries use attempts with both assessments.
-- Elapsed time is wall-clock time from entering the first room. It is informational and has no effect on scores. The timed option shows a clock during play.
+| Operation | Implementation |
+|---|---|
+| Input validation | `validate_hex64`: exactly 16 hex digits (spaces allowed), clear messages for missing / wrong length / non-hex; leading zeros preserved by zero-padded formatting |
+| IP / IP⁻¹ / E / P / PC-1 / PC-2 | `permute(bits, table)`: `output[i] = input[table[i]]` with the standard 1-based tables |
+| Key schedule | `key_schedule`: PC-1 → C0, D0 (28 bits each) → for rounds 1–16 rotate left by `SHIFTS[i]` → PC-2 on C‖D → 48-bit Kᵢ. Trace keeps PC-1, C0/D0, shift, running total, C/D before and after, C‖D and Kᵢ |
+| S-boxes | `sbox_lookup`: row = bits 1&6, column = bits 2–5, value from S1–S8, output as 4 bits; trace keeps all of these |
+| F-function | `feistel(R, K)`: E(R) → ⊕K → 8 S-boxes → P |
+| Rounds | `des_trace`: IP → L0,R0 → 16 × (Lᵢ = Rᵢ₋₁, Rᵢ = Lᵢ₋₁ ⊕ F(Rᵢ₋₁, Kᵢ)) → swap R16‖L16 → IP⁻¹ |
+| Decryption | same `des_trace` with `decrypt=True`: the same subkeys applied in order K16…K1 (no separate key set) |
 
-## Implementation map for the project team
+Verification: the classic vector `0123456789ABCDEF` / `133457799BBCDFF1` → `85E813540F0AB405`,
+all 16 published round keys for that key, published round-1 intermediates (E, XOR, S-box output, F, R1),
+L16/R16, five more known-answer vectors, 200 random encrypt/decrypt round trips, and 300 random blocks
+cross-checked against pycryptodome. Results are computed, never hard-coded.
 
-| Area | Source |
-| --- | --- |
-| DES operations, trace and known-answer verification | [academy/des.py](academy/des.py), [academy/tests.py](academy/tests.py) |
-| Puzzle generation, game state and persistence | [academy/puzzles.py](academy/puzzles.py), [academy/game.py](academy/game.py), [academy/models.py](academy/models.py), [academy/migrations](academy/migrations) |
-| Django views, classroom analytics and access rules | [academy/views.py](academy/views.py), [cipherbreak/urls.py](cipherbreak/urls.py) |
-| User interface, diagrams and curriculum | [templates](templates), [static/site.css](static/site.css), [static/site.js](static/site.js), [academy/curriculum.py](academy/curriculum.py) |
-| Browser verification and demo setup | [tests/browser_smoke.py](tests/browser_smoke.py), [academy/management/commands/demo_data.py](academy/management/commands/demo_data.py) |
+---
 
-### How DES is calculated
+## 6. Verification done
 
-1. Validate that the input and key each contain exactly 16 hex digits. Interpret the strings as unsigned 64-bit values, and format every traced value at its defined width so leading zeroes survive.
-2. Apply IP by reading each output bit from the one-based position listed in the standard table. Split the result into the 32-bit halves L₀ and R₀.
-3. For the key schedule, PC-1 selects and rearranges 56 bits, omitting the eight parity positions. Split the result into 28-bit C₀ and D₀, rotate each half by that round’s scheduled count, concatenate them, and select 48 bits with PC-2. Retain the old and new halves, the combined value and each generated subkey.
-4. Each Feistel round expands R to 48 bits with E, XORs in the round key, and splits the result into eight six-bit chunks. Each S-box uses the first and last bits for the row and the middle four for the column. Combine the eight four-bit outputs and apply P. Copy the old R into the new L, and XOR the old L with the P result into the new R.
-5. After round 16, concatenate R₁₆ and L₁₆, then apply the inverse of IP. To decrypt, apply the same process with the existing subkeys in reverse order.
+- `python manage.py test` — 74 tests pass.
+- Automated browser runs (Chromium, Playwright) that play a complete adventure through the real game:
+  title screen, intro, onboarding (moving, using the holotable), walking to every machine by clicking the
+  world, operating each machine's controls (dials, switches, cables, cutter, rotors, forge, sockets, gates,
+  S-box grid, router, reactor, key cartridges, letter wheels, dialogue), gates opening, archives,
+  inventory, map, and walking out of the exit: **no console errors**.
+- Instructor dashboard, classroom analytics, demo mode (custom message/key, open Room 3), DES Lab
+  (round 16, S-box details, key tab, input validation) and an internal link scan (no broken links).
+- Mobile layout checked at iPhone 13 size.
 
-The permutation and S-box tables follow [FIPS PUB 46-3](https://csrc.nist.gov/pubs/fips/46-3/final). DM Sans and Space Grotesk are bundled under their [SIL Open Font Licenses](static/fonts).
+---
 
-## Test
+## 7. Limitations / not included
 
-```sh
-python manage.py test
-python manage.py makemigrations --check --dry-run
-```
-
-The Django suite covers known-answer vectors, all 16 subkeys, intermediate values, both DES directions, mission generation, a complete four-room playthrough, scoring, assessments, saved progress, login, CSRF, classroom isolation, and CSV export.
-
-For the optional desktop and mobile Chromium checks, start the app against a disposable local database and run the Playwright smoke test. It creates temporary fictional students.
-
-```sh
-python -m pip install playwright
-python -m playwright install chromium
-python tests/browser_smoke.py
-```
-
-Pass `--chromium /path/to/chromium` to use an installed Chromium. Use `--base-url` if the local server runs on another port.
-
-## Scope
-
-The project is intended for local classroom demonstrations and formative assessment. It uses SQLite and Django development settings by default. Database progress survives a server restart. To retain logins across restarts, configure a stable `CIPHERBREAK_SECRET_KEY`. Any shared deployment needs separate hosting configuration and operational review. Independent mode records assistance in the app, while students can still use outside resources. Instructor analytics describe observed results and do not measure causal impact.
-
-## Immersive presentation edition
-
-[Play CipherBreak EDU](https://cipherbreak-edu-escape.youngcondor1.chatgpt.site) in a regular browser. Start in Guided mode, collect the access card, open a machine, and work through its example and practice before repairing the live signal. Challenge mode starts at the independent task. The public edition stores scores and an attempt history on the device. Sign-in, classroom data, and CSV reports are features of the Django edition.
-
-### Local course-test accounts
-
-After installing and migrating with the local commands above, run:
-
-```sh
-python manage.py course_demo
-python manage.py runserver
-```
-
-When prompted, enter the two development passwords supplied in the private redesign brief. The command creates `demo_student` and `demo_professor`, a playable attempt, and a classroom with a completed sample attempt. Repeating the command refreshes the credentials while preserving progress. It refuses to run in production mode. For unattended local testing, use the `CIPHERBREAK_DEMO_STUDENT_PASSWORD` and `CIPHERBREAK_DEMO_PROFESSOR_PASSWORD` environment variables. Keep the real deployment free of this local database and these credentials.
-
-### Verify the redesign
-
-```sh
-python manage.py test
-python tests/browser_smoke.py --base-url http://127.0.0.1:8000/
-```
-
-To verify all four rooms of the browser edition locally, run `python -m http.server 8767 --directory docs`, then `python tests/presentation_browser.py http://127.0.0.1:8767/` from another terminal. Both browser checks use Playwright. See [lesson design and assessment evidence](EDUCATION.md) for the operation-by-operation curriculum.
+- **Learning-gain claims:** the platform records pre/post scores but makes no claim that the game improves
+  learning; the demo data is simulated.
+- **Email** is printed to the terminal in the local demo (see "Password reset"); a real mail server must be
+  configured for deployment.
+- **Drag-and-drop on phones:** browsers' native drag-and-drop doesn't work with touch, so on phones and
+  tablets the key-order puzzle uses the tap-to-place fallback.
+- **Advanced replay challenges** beyond the optional bonus S-box are not separate unlockable levels;
+  variety comes from new values, rounds, groups and positions each adventure.
+- **Deployment:** configured for a local demo (SQLite, Django dev server). The public prototype remains an archive. For hosting the merged edition, set
+  `DJANGO_DEBUG=0`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS` and run behind a production server.
+- Automated UI tests are Playwright scripts we ran during development (`tools/ui_tests/`), not part of `manage.py test`.

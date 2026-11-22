@@ -1,0 +1,49 @@
+@font-face { font-family: "Space Grotesk"; src: url("../fonts/space-grotesk.woff2") format("woff2"); font-weight:400 700; font-display:swap; }
+.facility-hero { min-height: 495px; display:grid; align-items:center; text-align:left; padding:clamp(1.1rem,5vw,4rem); border:1px solid #3b5c56; border-radius:14px; background:linear-gradient(90deg,#09141af5 2%,#09202572 55%,transparent 85%),url("../art/facility.webp") 66% center/cover; }
+.facility-headline { max-width: min(650px,100%); }
+.facility-headline h1 { font:700 clamp(2.8rem,8vw,6.8rem)/.92 "Space Grotesk", sans-serif; letter-spacing:-.063em; margin:.7rem 0 1rem; color:#f1f7f4; }
+.facility-headline em { color:#a1f4bf; font-style:normal; }
+.facility-headline p:not(.facility-eyebrow) { color:#d5e4e3; font-size:1.1rem; }
+.facility-eyebrow { color:#a1f4bf; font-size:.8rem; letter-spacing:.13em; }
+.facility-thumbnail { min-height:100px; margin:-.35rem -.35rem .7rem; border-radius:7px; background: var(--room-art) center/cover; }
+.room-1, #game[data-room="1"] { --room-art: url("../art/hex.webp"); --room-light:#8aefb6; }
+.room-2, #game[data-room="2"] { --room-art: url("../art/key.webp"); --room-light:#c8a5ff; }
+.room-3, #game[data-room="3"] { --room-art: url("../art/reactor.webp"); --room-light:#82e9ed; }
+.room-4, #game[data-room="4"] { --room-art: url("../art/exit.webp"); --room-light:#ffce86; }
+#game[data-room="0"] { --room-art: url("../art/facility.webp"); --room-light:#a1f4bf; }
+.cinematic-room { position:absolute; inset:0; overflow:hidden; isolation:isolate; }
+.cinematic-art, .cinematic-atmosphere, .cinematic-objects { position:absolute; inset:0; }
+.cinematic-art { z-index:-3; background:var(--room-art) center/cover; transform:translate(var(--camera-x,0),var(--camera-y,0)) scale(var(--camera-scale,1.04)); transition:transform .22s ease-out; }
+.cinematic-atmosphere { z-index:-2; pointer-events:none; background:linear-gradient(180deg,#070f18c9,transparent 30%,#060c1640 75%,#060c16eb),radial-gradient(ellipse at 50% 55%,transparent 30%,#050a14a8); }
+.cinematic-room::after { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; background:radial-gradient(circle at 23% 53%,var(--room-light) 0 1px,transparent 2px),radial-gradient(circle at 66% 23%,var(--room-light) 0 1px,transparent 2px),radial-gradient(circle at 84% 68%,var(--room-light) 0 1px,transparent 2px); animation:dust 6s ease-in-out infinite alternate; opacity:.32; }
+@keyframes dust { to { transform:translateY(-13px); opacity:.8; } }
+.game-page .stage-area { flex:1; min-height:0; }
+.game-page #game:not(.floor-plan) .stage { width:100%!important; height:100%!important; min-height:320px; border-radius:0; }
+.game-page #game:not(.floor-plan) #world { visibility:hidden; }
+.game-page #game:not(.floor-plan) #labels, .game-page #game:not(.floor-plan) #prompt { display:none; }
+.game-page #game:not(.floor-plan) #nova-say { left:50%!important; top:12px!important; transform:translateX(-50%); max-width:min(490px,90%); }
+.floor-plan .cinematic-room { display:none; }
+.room-hotspot { position:absolute; top:var(--y); left:var(--x); display:grid; place-items:center; gap:.22rem; transform:translate(-50%,-50%); border:0; background:none; color:#eff7fd; min-width:2.55rem; font:600 .79rem/1.15 "Space Grotesk",sans-serif; cursor:pointer; text-align:center; padding:0; }
+.room-hotspot .signal { display:grid; place-items:center; width:2.35rem; height:2.35rem; border-radius:50%; border:1px solid var(--room-light); background:#0b1928eb; color:var(--room-light); font-size:1.2rem; }
+.room-hotspot .label { display:block; padding:.22rem .36rem; background:#061422eb; border:1px solid #3a5968; border-radius:4px; overflow-wrap:anywhere; max-width:8.5rem; }
+.room-hotspot.locked .signal { color:#ff9c9c; border-color:#c46b70; }
+.room-hotspot.solved .signal { color:#9cf1c0; border-color:#8ce0a8; background:#112d27; }
+.room-hotspot.target .signal { animation:marker 2s ease-in-out infinite; border:2px solid var(--room-light); }
+.room-hotspot:hover .signal, .room-hotspot:focus-visible .signal { box-shadow:0 0 18px var(--room-light); }
+.room-hotspot:focus-visible { outline:2px solid #c4ffd9; outline-offset:4px; }
+@keyframes marker { 45% { box-shadow:0 0 0 6px #a1f4bf28,0 0 21px var(--room-light); } }
+.cinematic-objects .room-hotspot { z-index:1; }
+.title-screen, .escape-screen { background:linear-gradient(90deg,#081423cb,#08142396),url("../art/facility.webp") center/cover; }
+.escape-screen { background-image:linear-gradient(#0814238f,#081423d6),url("../art/exit.webp"); }
+.machine-back:not(.hidden) ~ .title-screen { pointer-events:none; }
+#game:has(.machine-back:not(.hidden)) .cinematic-room { --camera-scale:1.13; }
+#game.cinematic-alarm .cinematic-atmosphere { animation:alarm-light 1.1s ease-in-out infinite alternate; }
+@keyframes alarm-light { to { background:#fa193340; } }
+#game.cinematic-transition .cinematic-objects { opacity:0; }
+#game.cinematic-transition .cinematic-room { animation:power-door .48s ease-in-out both; }
+@keyframes power-door { 85% { filter: brightness(1.4); transform:scale(1.035); } 100% { opacity:.25; } }
+@media (max-width:640px) { .facility-hero { min-height:415px; } .room-hotspot .label { font-size:.67rem; max-width:4.8rem; } .room-hotspot .signal { width:1.95rem;height:1.95rem; } }
+@media (prefers-reduced-motion:reduce) { .cinematic-room::after, .room-hotspot.target .signal, #game.cinematic-alarm .cinematic-atmosphere, #game.cinematic-transition .cinematic-room {animation:none;} .cinematic-art {transition:none; transform:none;} }
+#game.cinematic-alarm .cinematic-art::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,#050a14f0 0 9%,transparent 10%),linear-gradient(0deg,#050a14f0 0 9%,transparent 10%); animation:lockdown .95s ease-out both; }
+@keyframes lockdown { from { opacity:0; transform:scaleY(.1); } 65% { opacity:1; } to { opacity:.3; transform:scaleY(1); } }
+@media (prefers-reduced-motion:reduce) { #game.cinematic-alarm .cinematic-art::after {animation:none;} }

@@ -1,52 +1,53 @@
-{% load static %}
-<!doctype html>
+{% load static %}<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0c111b">
-  <link rel="icon" href="{% static 'art/favicon.png' %}" type="image/png">
-  <meta name="description" content="An interactive DES escape room for university cryptography courses.">
-  <title>{% block title %}CipherBreak EDU{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'site.css' %}">
-  <script src="{% static 'site.js' %}" defer></script>
+  <title>{% block title %}CipherBreak EDU{% endblock %} · CipherBreak EDU</title>
+  <meta name="description" content="CipherBreak EDU: The 16-Round Escape — an educational escape-room game that teaches DES.">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2334e0ff'/><text x='16' y='22' font-size='16' text-anchor='middle' font-family='monospace' fill='%23061026'>CB</text></svg>">
   {% block head %}{% endblock %}
+<link rel="stylesheet" href="{% static 'css/cinematic.css' %}">
+<link rel="icon" type="image/png" href="{% static 'art/favicon.png' %}">
 </head>
-<body class="{% block body_class %}{% endblock %}">
-<a class="skip" href="#main">Skip to content</a>
+<body class="{% block bodyclass %}{% endblock %}">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="lab-bg" aria-hidden="true"><div class="bits">{% for i in "0123456789" %}0110 1001 1100 0011 0101 1010 1111 0000 0100 1101 0110 1001 1100 0011 0101 1010 1111 0000 0100 1101 0110 1001 1100 0011
+1010 0110 0001 1110 1011 0100 1001 0111 1100 0010 1010 0110 0001 1110 1011 0100 1001 0111 1100 0010 1010 0110 0001 1110
+{% endfor %}</div></div>
+{% block header %}
 <header class="site-header">
-  <div class="shell nav-wrap">
-    <a class="wordmark" href="{% url 'home' %}"><span class="brand-symbol" aria-hidden="true"><span></span></span><span>CipherBreak<span class="wordmark-edu"> EDU</span></span></a>
-    <nav class="site-nav" aria-label="Main navigation">
-      <a href="{% url 'home' %}#how-it-works">How it works</a>
-      <a href="{% url 'educators' %}">For educators</a>
-      <a href="{% url 'lab' %}">DES lab</a>
-    </nav>
-    <div class="nav-actions">
-      {% if user.is_authenticated %}
-        <a href="{% url 'dashboard' %}" class="button button-small button-ghost">Dashboard</a>
-        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="nav-text" type="submit">Sign out</button></form>
-      {% else %}
-        <a class="nav-text" href="{% url 'login' %}">Sign in</a>
-        <a class="button button-small button-green" href="{% url 'register' %}">Create account</a>
-      {% endif %}
-    </div>
-  </div>
+  <a class="logo" href="{% url 'landing' %}"><span class="logo-mark">CB</span><span>CipherBreak EDU<small>THE 16-ROUND ESCAPE</small></span></a>
+  <nav class="nav" aria-label="Main">
+    {% if user.is_authenticated %}
+      <a href="{% url 'dashboard' %}">Dashboard</a>
+      {% if is_instructor %}<a href="{% url 'instructor_dashboard' %}">Instructor</a>{% endif %}
+    {% endif %}
+    <a href="{% url 'lab' %}">DES Lab</a>
+    {% if user.is_authenticated %}<a href="{% url 'notebook' %}">Notebook</a>{% endif %}
+    <a href="{% url 'how_to_play' %}">How it works</a>
+    <a href="{% url 'educators' %}">For Educators</a>
+    {% if user.is_authenticated %}
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="linklike" type="submit">Sign out ({{ user.username }})</button></form>
+    {% else %}
+      <a href="{% url 'login' %}">Sign in</a>
+      <a class="btn btn-sm btn-primary" href="{% url 'register' %}">Create account</a>
+    {% endif %}
+  </nav>
 </header>
-<main id="main">
-{% if messages %}
-<div class="shell notices" aria-live="polite">
-  {% for message in messages %}<p class="notice {{ message.tags }}"><span aria-hidden="true">{% if message.tags == "error" %}×{% else %}✓{% endif %}</span> {{ message }}</p>{% endfor %}
-</div>
-{% endif %}
-{% block content %}{% endblock %}
+{% endblock %}
+<main id="main" class="{% block mainclass %}{% endblock %}">
+  {% if messages %}{% for m in messages %}<div class="alert {{ m.tags }}" role="status">{{ m }}</div>{% endfor %}{% endif %}
+  {% block content %}{% endblock %}
 </main>
+{% block footer %}
 <footer class="site-footer">
-  <div class="shell footer-wrap">
-    <a class="wordmark" href="{% url 'home' %}"><span class="brand-symbol" aria-hidden="true"><span></span></span><span>CipherBreak<span class="wordmark-edu"> EDU</span></span></a>
-    <p>EECE 455 · American University of Beirut</p>
-    <a href="{% url 'educators' %}">For educators</a>
-  </div>
+  CipherBreak EDU — EECE 455 Cryptography &amp; Network Security project, American University of Beirut.<br>
+  <b>Educational simulator.</b> DES is obsolete and must not be used to protect real data (56-bit effective key).
 </footer>
+{% endblock %}
+<script src="{% static 'js/common.js' %}"></script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

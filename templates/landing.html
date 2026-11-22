@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Learn the cipher{% endblock %}
+{% block content %}
+<section class="hero facility-hero">
+  <div class="facility-headline">
+    <p class="facility-eyebrow">CIPHERBREAK EDU · EECE 455</p>
+    <h1>The 16-Round<br><em>Escape.</em></h1>
+    <p>Four locked rooms. Repair the DES machines and find your way out.</p>
+    <div class="btn-row">
+      <a class="btn btn-primary" href="{% if user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'register' %}{% endif %}">Start playing</a>
+      <a class="btn" href="{% url 'how_to_play' %}">How to play</a>
+      {% if not user.is_authenticated %}<a class="btn btn-ghost" href="{% url 'login' %}">Sign in</a>{% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="grid grid-4" aria-label="The four rooms">
+  {% for n, r in rooms.items %}
+  <div class="panel room-card facility-card room-{{ n }}"><div class="facility-thumbnail" aria-hidden="true"></div><span class="num">ROOM {{ n }}</span><h3>{{ r.name }}</h3>
+    <p class="small muted">{% if n == 1 %}ASCII → hex, the 64-bit block, Initial Permutation, L0/R0.{% elif n == 2 %}Parity bits, PC-1, C/D halves, circular shifts, PC-2 — all 16 round keys.{% elif n == 3 %}Expansion, XOR, S-boxes, P, the Feistel update and all 16 rounds.{% else %}Reverse key order, decryption, recovering the code, and why DES is insecure.{% endif %}</p></div>
+  {% endfor %}
+</section>
+
+<section class="grid grid-2" style="margin-top:16px">
+  <div class="panel"><h2>Why it works</h2>
+    <ul class="feature-list"><li>Every value is computed by a real DES engine — no fake numbers.</li>
+      <li>Interactive tutorials teach each operation before you're challenged.</li>
+      <li>Three-level hints that teach the method, not just the answer.</li>
+      <li>New messages, keys and puzzles on every adventure.</li>
+      <li>Saved progress, scores and six achievements.</li>
+      <li>A full DES Lab: inspect every operation of all 16 rounds.</li></ul></div>
+  <div class="panel" id="instructors"><h2>For Instructors</h2>
+    <p>Create a classroom, share a join code, and follow your students' progress by learning objective. Run lecture demonstrations with your own message and key, compare pre/post assessments and export results to CSV.</p>
+    <div class="btn-row"><a class="btn btn-teal" href="{% url 'educators' %}">Learn more for educators</a>
+      <a class="btn" href="{% url 'register_instructor' %}">Instructor sign-up (invitation code)</a></div></div>
+</section>
+<p class="disclaimer" style="margin-top:16px"><b>Important:</b> DES is studied here because it is historically important and teaches how block ciphers are built. It is <b>not secure</b> for modern use: only 56 of its 64 key bits are effective, which makes exhaustive key search practical.</p>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block title %}{{ s.student.username }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'classroom_detail' classroom.pk %}">← {{ classroom.name }}</a></p>
+<h1>{{ s.student.username }}</h1>
+<div class="grid grid-4"><div class="panel stat"><b>{{ s.rooms_done }}/4</b>Rooms (best attempt)</div><div class="panel stat"><b>{{ s.score }}</b>Best score</div><div class="panel stat"><b>{{ s.attempts }}</b>Attempts</div><div class="panel stat"><b>{{ s.hints }}</b>Hints used</div></div>
+<div class="panel"><h2>Accuracy by learning objective</h2>{% for lo, st in s.stats.items %}<div class="bar-row" title="{{ st.solved }} solved / {{ st.wrong }} wrong / {{ st.hints }} hint levels"><span>{{ lo }}</span><div class="bar"><span style="width:{% if st.accuracy is not None %}{{ st.accuracy }}{% else %}0{% endif %}%"></span></div><span class="small">{% if st.accuracy is not None %}{{ st.accuracy }}%{% else %}—{% endif %}</span></div>{% endfor %}
+<p>Pre-assessment: {% if s.pre %}{{ s.pre.score }}/{{ s.pre.total }}{% else %}—{% endif %} · Post-assessment: {% if s.post %}{{ s.post.score }}/{{ s.post.total }}{% else %}—{% endif %}</p></div>
+<div class="panel"><h2>Attempts</h2><div class="table-wrap"><table><tr><th>Started</th><th>Mode</th><th>Status</th><th>Rooms</th><th>Score</th><th>Hints</th><th>Mistakes</th><th>Active time</th><th>Needs practice</th></tr>
+{% for a, r in attempts %}<tr><td>{{ a.started_at|date:"M j H:i" }}</td><td>{{ a.label }}</td><td>{{ a.get_status_display }}</td><td>{{ r.rooms_completed }}/4</td><td>{{ a.score }}</td><td>{{ r.hints_used }}</td><td>{{ r.mistakes }}</td><td>{{ r.active_minutes }} min</td><td class="small">{% for lo, t in r.practice %}{{ lo }} {% endfor %}</td></tr>{% endfor %}</table></div></div>
+{% endblock %}

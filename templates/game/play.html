@@ -1,0 +1,113 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The 16-Round Escape · CipherBreak EDU</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="stylesheet" href="{% static 'css/game.css' %}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2334e0ff'/><text x='16' y='22' font-size='16' text-anchor='middle' font-family='monospace' fill='%23061026'>CB</text></svg>">
+  <link rel="stylesheet" href="{% static 'css/cinematic.css' %}">
+</head>
+<body class="game-page">
+<div id="game" class="g-root" data-room="0">
+  <!-- Game HUD -->
+  <header class="hud" id="hud" aria-label="Game HUD">
+    <div class="hud-l">
+      <span class="hud-logo" aria-hidden="true">CB</span>
+      <div class="hud-loc"><b id="hud-room">MAIN LOBBY</b><span id="hud-obj">—</span></div>
+    </div>
+    <div class="hud-m">
+      <div class="hud-stat"><small>SCORE</small><b id="hud-score">{{ attempt.score }}</b></div>
+      <div class="hud-stat wide"><small>ESCAPE <span id="hud-pct">0%</span></small><span class="hud-bar"><i id="hud-bar"></i></span></div>
+      <div class="hud-stat hidden" id="hud-timer-wrap"><small>TIME</small><b id="hud-timer">0:00</b></div>
+      <div class="hud-stat rooms" id="hud-rooms" aria-label="Room locks"></div>
+    </div>
+    <nav class="hud-r" aria-label="Game menu">
+      <button type="button" class="hbtn" id="b-hint" title="Hint (H)"><span>💡</span><small>HINT</small></button>
+      <button type="button" class="hbtn" id="b-inv" title="Inventory (I)"><span>🎒</span><small>ITEMS</small><em class="dot hidden" id="inv-dot"></em></button>
+      <button type="button" class="hbtn" id="b-view" aria-pressed="false" title="Toggle floor plan"><span>⌗</span><small>VIEW</small></button>
+      <button type="button" class="hbtn" id="b-map" title="Map (M)"><span>🗺</span><small>MAP</small></button>
+      <button type="button" class="hbtn" id="b-notes" title="Notebook (N)"><span>📓</span><small>NOTES</small></button>
+      <button type="button" class="hbtn" id="b-sound" title="Sound effects" aria-pressed="false"><span>🔇</span><small>SFX</small></button>
+      <button type="button" class="hbtn" id="b-music" title="Music" aria-pressed="false"><span>♫</span><small>MUSIC</small></button>
+      <button type="button" class="hbtn" id="b-menu" title="Menu (Esc)"><span>☰</span><small>MENU</small></button>
+    </nav>
+  </header>
+
+  <!-- World -->
+  <div class="stage-area" id="stage-area">
+    <div class="stage" id="stage">
+      <div class="cinematic-room" id="cinematic-room" aria-label="Room view">
+        <div class="cinematic-art" aria-hidden="true"></div><div class="cinematic-atmosphere" aria-hidden="true"></div>
+        <div class="cinematic-objects" id="cinematic-objects"></div>
+      </div>
+      <canvas id="world" width="320" height="192" aria-label="Game world. Move with arrow keys or WASD, press E to use machines. Every machine can also be reached from the Map." role="img"></canvas>
+      <div class="labels" id="labels" aria-hidden="true"></div>
+      <div class="nova-bubble-w hidden" id="nova-say" role="status" aria-live="polite"><b>NOVA</b><span></span></div>
+      <div class="prompt hidden" id="prompt" aria-live="polite"></div>
+      <div class="banner hidden" id="banner" aria-live="assertive"></div>
+      <div class="dialog hidden" id="dialog" role="dialog" aria-label="NOVA">
+        <div class="portrait" aria-hidden="true"><i></i></div>
+        <div class="dbody"><b class="who">NOVA</b><p id="dialog-text"></p></div>
+        <div class="dbtns"><button type="button" class="pxbtn" id="dialog-next">▶ NEXT</button><button type="button" class="pxbtn ghost small" id="dialog-skip">SKIP</button></div>
+      </div>
+      <div class="touchpad" id="touchpad" aria-hidden="true">
+        <button data-k="arrowup">▲</button><button data-k="arrowleft">◀</button><button data-k="e" class="use">E</button><button data-k="arrowright">▶</button><button data-k="arrowdown">▼</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Machine panel (opens when you use a terminal) -->
+  <div class="machine-back hidden" id="machine-back">
+    <section class="machine" id="machine" role="dialog" aria-modal="true" aria-labelledby="mc-title">
+      <header class="mc-head">
+        <span class="screw tl"></span><span class="screw tr"></span>
+        <div class="mc-plate"><small id="mc-kicker">ROOM 1 · STEP 1</small><h2 id="mc-title">Machine</h2></div>
+        <div class="mc-lights"><i></i><i></i><i></i></div>
+        <button type="button" class="pxbtn ghost small" id="mc-close" aria-label="Close machine">✕ LEAVE</button>
+      </header>
+      <div class="mc-task"><span class="nova-face" aria-hidden="true"></span><div><p id="mc-task"></p><p class="tiny muted" id="mc-nova"></p></div></div>
+      <div class="mc-body" id="mc-body"></div>
+      <div class="mc-feedback" id="mc-feedback" role="status" aria-live="polite"></div>
+      <div class="mc-hints" id="mc-hints"></div>
+      <footer class="mc-foot" id="mc-foot">
+        <button type="button" class="pxbtn amber" id="mc-hint">💡 HINT</button>
+        <button type="button" class="pxbtn ghost" id="mc-tut">? HOW IT WORKS</button>
+        <span class="mc-cost tiny" id="mc-cost"></span>
+        <button type="button" class="pxbtn go" id="mc-engage">⚡ ENGAGE</button>
+      </footer>
+      <span class="stamp hidden" id="mc-stamp">ACCESS GRANTED</span>
+    </section>
+  </div>
+
+  <!-- Title screen -->
+  <div class="title-screen" id="title">
+    <div class="title-inner">
+      <p class="t-kicker">EECE 455 · AN EDUCATIONAL DES ADVENTURE</p>
+      <h1 class="t-logo"><span>CIPHER</span><span>BREAK</span><small>THE 16-ROUND ESCAPE</small></h1>
+      <div class="t-menu" id="t-menu">
+        <button type="button" class="pxbtn big go" id="t-start">▶ START</button>
+        <button type="button" class="pxbtn" id="t-how">HOW TO PLAY</button>
+        <button type="button" class="pxbtn" id="t-settings">SETTINGS</button>
+        <div class="t-toggles"><button type="button" class="pxbtn ghost small" id="t-sound">🔇 SOUND OFF</button><button type="button" class="pxbtn ghost small" id="t-music">♫ MUSIC OFF</button></div>
+        <a class="pxbtn ghost small" href="{% url 'dashboard' %}">⟵ DASHBOARD</a>
+      </div>
+      <p class="t-meta"><span id="t-mode">{{ attempt.label }}</span> · player <b>{{ user.username }}</b></p>
+      <p class="t-press">PRESS ENTER</p>
+      <p class="t-disclaimer">Educational simulator. DES is obsolete; never use it to protect real data.</p>
+    </div>
+  </div>
+
+  <form id="restart-form" method="post" action="{% url 'new_adventure' %}" class="hidden">{% csrf_token %}<input type="hidden" name="mode" value="{% if attempt.mode == 'demo' %}guided{% else %}{{ attempt.mode }}{% endif %}"></form>
+</div>
+{{ boot|json_script:"cb-boot" }}
+<script src="{% static 'js/common.js' %}"></script>
+<script>window.CB_BOOT = JSON.parse(document.getElementById("cb-boot").textContent);</script>
+<script src="{% static 'js/trace.js' %}"></script>
+<script src="{% static 'js/tutorial.js' %}"></script>
+<script src="{% static 'js/world.js' %}"></script>
+<script src="{% static 'js/machines.js' %}"></script>
+<script src="{% static 'js/play.js' %}"></script>
+</body>
+</html>

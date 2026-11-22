@@ -1,60 +1,72 @@
-{% extends "base.html" %}
-{% block title %}Student dashboard · CipherBreak EDU{% endblock %}
+{% extends "base.html" %}{% block title %}Dashboard{% endblock %}
 {% block content %}
-<div class="shell page-stack">
-  <div class="dashboard-hero card">
-    <div>
-      <p class="overline">STUDENT DASHBOARD</p>
-      <h1>Welcome back, <em>{{ user.username }}.</em></h1>
-      <p>{% if current %}Your mission is saved. Continue from {{ current.get_stage_display|lower }}{% if current.current_room %}, room {{ current.current_room }}{% endif %}.{% else %}Choose an adventure to begin your DES training.{% endif %}</p>
-      <div class="actions">
-        {% if current %}<a class="button button-green" href="{% url 'play' current.pk %}">Continue adventure</a>{% endif %}
-        <a class="button {% if current %}button-ghost{% else %}button-green{% endif %}" href="#new-adventure">New adventure</a>
-        <a class="button button-ghost" href="{% url 'lab' %}">Learning laboratory</a>
-      </div>
-    </div>
-  </div>
-  <div class="stat-grid">
-    <div class="stat"><span>Latest mission</span><strong>{% if latest %}{{ latest.percent }}%{% else %}0%{% endif %}</strong></div>
-    <div class="stat"><span>Mission score</span><strong>{{ latest.score|default:"0" }}</strong></div>
-    <div class="stat"><span>Completed missions</span><strong>{{ completed }}</strong></div>
-    <div class="stat"><span>Earned badges</span><strong>{{ badges|length }}</strong></div>
-  </div>
-  <section aria-labelledby="room-map-title">
-    <div class="section-heading"><div><p class="overline">FACILITY MAP</p><h2 id="room-map-title">Mission progress</h2></div></div>
-    {% include "parts/room_map.html" %}
+<h1>Welcome back, {{ user.username }}!</h1>
+<div class="grid grid-2">
+  <section class="panel" aria-labelledby="adv-h"><h2 id="adv-h">Your adventure</h2>
+    {% if active %}
+      <p>Current level: <b>{% if active.position.room %}Room {{ active.position.room }} — {% for n, r in rooms.items %}{% if n == active.position.room %}{{ r.name }}{% endif %}{% endfor %}{% else %}Main Lobby{% endif %}</b> · <span class="tag">{{ active.label }}</span></p>
+      <div class="progress" aria-label="Overall progress {{ active_state.attempt.percent }} percent"><span style="width:{{ active_state.attempt.percent }}%"></span></div>
+      <p class="small muted">{{ active_state.attempt.percent }}% complete · {{ active.score }} points · saved {{ active.last_active|timesince }} ago</p>
+      <div class="room-track" style="margin:12px 0">{% for r in active_state.rooms %}
+        <div class="room-pill {{ r.status }}"><span class="small muted">Room {{ r.n }}</span><br><b>{{ r.name }}</b><br>
+        <span class="st">{% if r.status == "completed" %}✓ Completed · {{ r.score }} pts{% elif r.status == "available" %}▶ Unlocked · {{ r.solved }}/{{ r.required }}{% else %}🔒 Locked{% endif %}</span></div>{% endfor %}</div>
+      <div class="btn-row"><a class="btn btn-primary" href="{% url 'resume' %}">▶ Resume Adventure</a></div>
+    {% else %}
+      <p>No adventure in progress. Start one below — every adventure generates new messages, keys and puzzles.</p>
+      <div class="room-track" style="margin:12px 0">{% for n, r in rooms.items %}<div class="room-pill {% if n == 1 %}available{% else %}locked{% endif %}"><span class="small muted">Room {{ n }}</span><br><b>{{ r.name }}</b><br><span class="st">{% if n == 1 %}▶ Starts here{% else %}🔒 Locked{% endif %}</span></div>{% endfor %}</div>
+    {% endif %}
+    <h3 style="margin-top:16px">Start New Adventure</h3>
+    <form method="post" action="{% url 'new_adventure' %}" id="new-adv" {% if active %}data-confirm="1"{% endif %}>{% csrf_token %}
+      <fieldset style="border:0;padding:0;margin:0"><legend class="sr-only">Mode</legend>
+      <label class="choice"><input type="radio" name="mode" value="guided" checked> <span><b>Guided Mode</b> — full tutorials, free hints, relaxed practice (results labelled guided practice).</span></label>
+      <label class="choice"><input type="radio" name="mode" value="challenge"> <span><b>Challenge Mode</b> — shorter instructions, optional hints cost points, recorded as an independent result.</span></label>
+      <label class="choice"><input type="checkbox" name="timed"> <span>Show a timer (Challenge mode only; informational — no time limit).</span></label></fieldset>
+      {% if assignments %}<label for="assign">Classroom assignment (optional)</label><select id="assign" name="assignment"><option value="">Personal practice</option>
+        {% for a in assignments %}<option value="{{ a.id }}">{{ a.classroom.name }} — {{ a.title }}{% if a.required_mode != "any" %} ({{ a.get_required_mode_display }} mode required){% endif %}</option>{% endfor %}</select>{% endif %}
+      <div class="btn-row" style="margin-top:10px"><button class="btn btn-teal" type="submit">✦ Start New Adventure</button>
+        <a class="btn" href="{% url 'how_to_play' %}">How to Play</a><a class="btn" href="{% url 'lab' %}">Learning Laboratory</a><a class="btn" href="{% url 'notebook' %}">Notebook</a></div>
+    </form>
   </section>
-  <div class="two-col">
-    <section class="card" id="new-adventure">
-      <h2>Start a new adventure</h2>
-      <form class="stack-form" method="post" action="{% url 'start' %}">{% csrf_token %}
-        <fieldset><legend>Choose a mode</legend>
-          <label class="option-label"><input type="radio" name="mode" value="guided" checked> <span><strong>Guided practice</strong><small>NOVA walks you through each operation.</small></span></label>
-          <label class="option-label"><input type="radio" name="mode" value="challenge"> <span><strong>Independent challenge</strong><small>Work through shorter instructions with optional hints.</small></span></label>
-        </fieldset>
-        <label class="inline-option"><input type="checkbox" name="timed" value="1"> Show elapsed time during this mission</label>
-        <button type="submit" class="button button-green">Start adventure</button>
-      </form>
-      <details class="plain-details"><summary>How to play</summary><p>Start with the briefing, follow NOVA’s interactive tour, and complete the terminal challenges in each room. You can replay tutorials, ask for up to three hints per puzzle and inspect concepts in the notebook.</p></details>
-    </section>
-    <section class="card">
-      <h2>Classroom assignments</h2>
-      {% for assignment in assignments %}
-      <form method="post" action="{% url 'start' %}" class="split-row">{% csrf_token %}<input type="hidden" name="assignment" value="{{ assignment.pk }}"><div><strong>{{ assignment.title }}</strong><p>{{ assignment.classroom.name }} · {{ assignment.get_mode_display }}</p></div><button class="button button-small button-ghost" type="submit">Start assignment</button></form>
-      {% empty %}<p>Join a classroom to see assignments from your instructor.</p>{% endfor %}
-      <form class="stack-form" method="post" action="{% url 'join' %}">{% csrf_token %}<label for="join-code">Classroom join code</label><div class="input-row"><input id="join-code" name="code" maxlength="12" required><button class="button button-ghost" type="submit">Join</button></div></form>
-    </section>
-  </div>
-  <div class="two-col">
-    <section class="card"><h2>Attempt history</h2>
-      {% for attempt in attempts %}
-      <article class="split-row"><div><strong>{{ attempt.assignment|default:"Open practice" }}</strong><p>{{ attempt.classification }} · {{ attempt.rooms_completed }}/4 rooms · {{ attempt.score }} pts</p><small>{{ attempt.started_at|date:"M j, Y" }}</small></div><a class="button button-small button-ghost" href="{% if attempt.completed_at %}{% url 'results' attempt.pk %}{% else %}{% url 'play' attempt.pk %}{% endif %}">{% if attempt.completed_at %}Results{% else %}Resume{% endif %}</a></article>
-      {% empty %}<p>Your adventures will appear here.</p>{% endfor %}
-    </section>
-    <section class="card"><h2>Achievements</h2>
-      {% for name, description in badges %}<div class="split-row"><div><strong><span aria-hidden="true">◇</span> {{ name }}</strong><p>{{ description }}</p></div></div>{% empty %}<p>Earn badges by clearing rooms and solving milestone puzzles.</p>{% endfor %}
-    </section>
-  </div>
-  {% if topics %}<section class="card"><h2>Latest mission by learning objective</h2>{% include "parts/topics.html" %}</section>{% endif %}
+
+  <section class="panel" aria-labelledby="stats-h"><h2 id="stats-h">Your statistics</h2>
+    <div class="grid grid-3">
+      <div class="stat"><b>{{ best_score }}</b><span class="small">Best completed score</span></div>
+      <div class="stat"><b>{{ lifetime_points }}</b><span class="small">Total points</span></div>
+      <div class="stat"><b>{{ completed|length }}</b><span class="small">Completed missions</span></div>
+      <div class="stat"><b>{{ puzzles_solved }}</b><span class="small">Challenges solved</span></div>
+      <div class="stat"><b>{{ hints_total }}</b><span class="small">Hints used</span></div>
+      <div class="stat"><b>{{ history|length }}</b><span class="small">Adventures started</span></div></div>
+    <h3 style="margin-top:14px">Accuracy by learning objective</h3>
+    {% for lo, s in stats.items %}<div class="bar-row" title="{{ s.solved }} solved, {{ s.wrong }} wrong answers"><span>{{ lo }}</span>
+      <div class="bar"><span style="width:{% if s.accuracy is not None %}{{ s.accuracy }}{% else %}0{% endif %}%"></span></div>
+      <span class="small">{% if s.accuracy is not None %}{{ s.accuracy }}%{% else %}—{% endif %}</span></div>{% endfor %}
+    <p class="small muted">Accuracy = challenges solved ÷ (solved + wrong answers), across all your adventures.</p>
+    <h3>Assessments</h3>
+    <p class="small">Pre: {% if pre %}<b>{{ pre.score }}/{{ pre.total }}</b>{% else %}<a href="{% url 'assessment' 'pre' %}">take it</a>{% endif %} ·
+      Post: {% if post %}<b>{{ post.score }}/{{ post.total }}</b>{% else %}{% if completed %}<a href="{% url 'assessment' 'post' %}">take it</a>{% else %}after you escape{% endif %}{% endif %}
+      {% if assessment_change is not None %}· change: <b>{% if assessment_change >= 0 %}+{% endif %}{{ assessment_change }}</b>{% endif %}</p>
+  </section>
 </div>
+
+<section class="panel"><h2>Badges</h2><div class="badge-grid">{% for b in badges %}<div class="badge {% if b.earned %}earned{% else %}locked{% endif %}"><span class="ic" aria-hidden="true">{{ b.icon }}</span><b>{{ b.name }}</b><br><span class="small">{% if b.earned %}Earned {{ b.earned_at|date:"M j" }}{% else %}{{ b.condition }}{% endif %}</span></div>{% endfor %}</div></section>
+
+<section class="panel"><h2>Previous attempts</h2>
+  {% if history %}<div class="table-wrap"><table><tr><th>Started</th><th>Mode</th><th>Status</th><th>Rooms</th><th>Score</th><th>Hints</th><th></th></tr>
+  {% for h in history %}<tr><td>{{ h.a.started_at|date:"M j, H:i" }}</td><td>{{ h.a.label }}</td><td>{{ h.a.get_status_display }}</td><td>{{ h.rooms }}/4</td><td>{{ h.a.score }}</td><td>{{ h.hints }}</td>
+    <td>{% if h.a.status == "active" %}<a href="{% url 'play' h.a.id %}">Resume</a>{% else %}<a href="{% url 'results' h.a.id %}">Results</a>{% endif %}</td></tr>{% endfor %}</table></div>
+  {% else %}<p class="muted">No attempts yet.</p>{% endif %}
+</section>
+
+<section class="panel"><h2>Classrooms</h2>
+  {% for m in memberships %}<span class="tag ok">{{ m.classroom.name }}</span> {% empty %}<p class="muted small">You haven't joined a classroom.</p>{% endfor %}
+  <form method="post" action="{% url 'join_classroom' %}" class="btn-row" style="margin-top:10px">{% csrf_token %}
+    <label for="join" class="sr-only">Join code</label><input id="join" name="code" type="text" placeholder="Join code from your instructor" style="max-width:260px" class="mono" required>
+    <button class="btn" type="submit">Join classroom</button></form>
+</section>
+<p class="small muted"><a href="{% url 'password_change' %}">Change my password</a></p>
 {% endblock %}
+{% block scripts %}<script>
+document.getElementById("new-adv").addEventListener("submit", function (e) {
+  if (this.dataset.confirm && !confirm("You have an unfinished adventure. Starting a new one closes it (its results stay in your history). Continue?")) e.preventDefault();
+});
+</script>{% endblock %}

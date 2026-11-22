@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block title %}DES Lab{% endblock %}
+{% block content %}<div class="panel form-narrow"><h1>Open the DES Lab?</h1>
+<p>You have an <b>independent Challenge</b> adventure in progress. The Lab shows complete DES calculations, which could reveal its answers.</p>
+<p>If you continue, that adventure will be recorded as <b>practice</b> rather than an independent challenge result. You can still finish it.</p>
+<div class="btn-row"><a class="btn btn-amber" href="?{% if query %}{{ query }}&amp;{% endif %}confirm=1">Open the Lab anyway</a><a class="btn" href="{% url 'play' attempt.id %}">Back to my challenge</a></div></div>{% endblock %}

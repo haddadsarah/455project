@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% block title %}Learning Notebook{% endblock %}
+{% block bodyclass %}{% if embed %}embed{% endif %}{% endblock %}
+{% block header %}{% if not embed %}{{ block.super }}{% endif %}{% endblock %}
+{% block footer %}{% if not embed %}{{ block.super }}{% endif %}{% endblock %}
+{% block content %}
+{% if not embed %}<h1>📓 DES Learning Notebook</h1>{% endif %}
+<p class="muted small">Every page is always available. Pages marked ● are concepts you've already met in the game.</p>
+<div class="nb">
+  <nav aria-label="Notebook pages">{% for p in pages %}<a href="#nb-{{ p.key }}" class="{% if p.discovered %}disc{% endif %}">{{ forloop.counter }}. {{ p.title }}</a>{% endfor %}</nav>
+  <div>{% for p in pages %}
+    <article class="panel" id="nb-{{ p.key }}"><h2>{{ forloop.counter }}. {{ p.title }} {% if p.discovered %}<span class="tag ok">discovered</span>{% else %}<span class="tag">not met yet</span>{% endif %}</h2>
+      <p>{{ p.definition }}</p>
+      <p class="formula">{{ p.formula }}</p>
+      <p><b>Example:</b> <span class="mono">{{ p.example }}</span></p>
+      <pre aria-label="Diagram">{{ p.diagram }}</pre>
+      <p class="small"><b>Where it's used in the game:</b> {{ p.used }} <span class="muted">({{ p.room }})</span></p>
+      <a class="btn btn-sm" href="{% url 'lab' %}{{ p.lab }}" target="{% if embed %}_blank{% else %}_self{% endif %}" rel="noopener">Open in the DES Explorer</a>
+    </article>{% endfor %}</div>
+</div>
+{% endblock %}
+{% block scripts %}{% if focus %}<script>var e=document.getElementById("nb-{{ focus|escapejs }}"); if(e) e.scrollIntoView();</script>{% endif %}{% endblock %}

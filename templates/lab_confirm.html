@@ -1,9 +1,0 @@
-{% extends "base.html" %}
-{% block title %}Open the mission trace · CipherBreak EDU{% endblock %}
-{% block content %}
-<div class="shell page-stack"><section class="card narrow">
-  <p class="overline">DES EXPLORER</p><h1>Reveal the mission trace?</h1>
-  <p>The full trace includes your puzzle answers. Opening it records this mission as an assisted challenge.</p>
-  <div class="actions"><form method="post">{% csrf_token %}<button class="button button-green" type="submit">Reveal trace</button></form><a href="{% url 'play' attempt.pk %}" class="button button-ghost">Return to mission</a><a class="button button-ghost" href="{% url 'lab' %}">Use the standalone lab</a></div>
-</section></div>
-{% endblock %}

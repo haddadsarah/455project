@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}How it works{% endblock %}
+{% block content %}
+<h1>How CipherBreak works</h1>
+<div class="grid grid-2">
+  <div class="panel"><h2>The journey</h2>
+    <ol><li><b>Sign in</b> — your progress is saved to your account.</li>
+      <li><b>Start an adventure</b> in Guided mode (full tutorials, free hints, practice) or Challenge mode (shorter instructions, recorded as an independent result).</li>
+      <li><b>Intro &amp; lobby</b> — the lab locks down; NOVA explains the mission.</li>
+      <li><b>Four rooms</b>, unlocked in order: {% for n, r in rooms.items %}{{ r.name }}{% if not forloop.last %} → {% endif %}{% endfor %}.</li>
+      <li><b>Escape</b> and review your results by learning objective.</li></ol>
+    <p>The first time you meet each operation, an interactive overlay highlights the controls, explains <i>why</i> the operation matters, asks you to perform it or answer a tiny practice question, and only then lets you continue. You can replay any tutorial.</p></div>
+  <div class="panel"><h2>Scoring — transparent and fair</h2>
+    <table><tr><td>Correct challenge</td><td>up to {{ scoring.base }} points</td></tr>
+      <tr><td>Each wrong answer</td><td>−{{ scoring.wrong }} on that challenge</td></tr>
+      <tr><td>Hints (Challenge mode)</td><td>−{{ scoring.hints.1 }} / −{{ scoring.hints.2 }} / −{{ scoring.hints.3 }}</td></tr>
+      <tr><td>Hints (Guided mode)</td><td>free</td></tr>
+      <tr><td>Room completed</td><td>+{{ scoring.bonus }} bonus</td></tr></table>
+    <p class="small muted">A challenge never scores below 0. Badly formatted answers (wrong length, non-hex characters) are explained and never cost points. Points are awarded once per challenge. Speed is never scored; an optional timed challenge only displays your time.</p></div>
+</div>
+<div class="panel"><h2>Achievements</h2><div class="badge-grid">{% for code, a in achievements.items %}<div class="badge"><span class="ic">{{ a.icon }}</span><b>{{ a.name }}</b><br><span class="small">{{ a.condition }}</span></div>{% endfor %}</div></div>
+<div class="panel"><h2>Controls</h2><p>Everything works with mouse, touch or keyboard: <kbd>Tab</kbd> moves between controls, <kbd>Enter</kbd>/<kbd>Space</kbd> activates, and in tutorials <kbd>→</kbd> = next, <kbd>←</kbd> = back, <kbd>Esc</kbd> = skip. Settings let you mute sound, reduce motion and enlarge text.</p>
+<a class="btn btn-primary" href="{% url 'dashboard' %}">Go to my dashboard</a></div>
+{% endblock %}

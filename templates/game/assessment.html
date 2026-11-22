@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block title %}{% if kind == "pre" %}Pre{% else %}Post{% endif %}-assessment{% endblock %}
+{% block content %}
+<div class="panel" style="max-width:780px;margin:0 auto"><h1>{% if kind == "pre" %}Pre-assessment{% else %}Post-assessment{% endif %}</h1>
+<p class="muted">7 short questions, one per learning objective. It is optional and is used only to compare what you knew {% if kind == "pre" %}before{% else %}after{% endif %} playing.{% if previous %} You already took it ({{ previous.score }}/{{ previous.total }} on {{ previous.taken_at|date:"M j" }}); a new submission is saved as an additional result.{% endif %}</p>
+<form method="post" class="answer-form">{% csrf_token %}{% if attempt %}<input type="hidden" name="attempt" value="{{ attempt.id }}">{% endif %}
+{% for q in questions %}<fieldset class="field"><legend><b>{{ forloop.counter }}. {{ q.text }}</b> <span class="tag">{{ q.objective }}</span></legend>
+  {% for o in q.options %}<label class="choice"><input type="radio" name="q{{ q.index }}" value="{{ o.value }}" required> <span>{{ o.label }}</span></label>{% endfor %}</fieldset>{% endfor %}
+<div class="btn-row"><button class="btn btn-primary" type="submit">Submit</button>{% if attempt %}<a class="btn" href="{% if kind == 'pre' %}{% url 'play' attempt.id %}{% else %}{% url 'results' attempt.id %}{% endif %}">Skip</a>{% else %}<a class="btn" href="{% url 'dashboard' %}">Cancel</a>{% endif %}</div></form></div>
+{% endblock %}

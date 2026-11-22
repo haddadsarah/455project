@@ -1,0 +1,68 @@
+{% extends "base.html" %}{% block title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'instructor_dashboard' %}">← Instructor dashboard</a></p>
+<h1>{{ classroom.name }}</h1>
+<p>Join code <b class="mono" style="font-size:1.3rem">{{ classroom.join_code }}</b> {% include "instructor/_copy.html" with text=classroom.join_code %} — students enter it on their dashboard. {{ classroom.description }}</p>
+<div class="btn-row"><a class="btn btn-teal" href="{% url 'export_csv' classroom.pk %}">⬇ Export results (CSV)</a></div>
+
+<h2 style="margin-top:18px">Class analytics</h2>
+<div class="grid grid-4">
+  <div class="panel stat"><b>{{ analytics.enrolled }}</b>Enrolled</div>
+  <div class="panel stat"><b>{{ analytics.started }}</b>Started</div>
+  <div class="panel stat"><b>{{ analytics.completed }}</b>Completed ({{ analytics.completion_rate }}%)</div>
+  <div class="panel stat"><b>{% if analytics.avg_score is not None %}{{ analytics.avg_score }}{% else %}—{% endif %}</b>Avg. completion score</div>
+  <div class="panel stat"><b>{% if analytics.avg_hints is not None %}{{ analytics.avg_hints }}{% else %}—{% endif %}</b>Avg. hints used</div>
+  <div class="panel stat"><b>{% if analytics.pre_avg is not None %}{{ analytics.pre_avg }}%{% else %}—{% endif %}</b>Avg. pre-assessment</div>
+  <div class="panel stat"><b>{% if analytics.post_avg is not None %}{{ analytics.post_avg }}%{% else %}—{% endif %}</b>Avg. post-assessment</div>
+  <div class="panel stat"><b>{{ analytics.paired }}</b>Students with both tests</div>
+</div>
+<div class="grid grid-2" style="margin-top:16px">
+  <div class="panel"><h3>Most frequently missed concepts (wrong answers)</h3>
+    {% for lo, text, count, pct in analytics.missed %}<div class="bar-row" title="{{ text }}"><span>{{ lo }}</span><div class="bar amber"><span style="width:{{ pct }}%"></span></div><span class="small">{{ count }}</span></div>{% endfor %}
+    <p class="small muted">Counts of wrong answers recorded for each learning objective.</p></div>
+  <div class="panel"><h3>Pre vs post by objective</h3>
+    {% if analytics.lo_change %}<p class="small muted">Correct answers among the {{ analytics.paired }} student(s) who took both assessments (grey = pre, colour = post).</p>
+    {% for lo, text, pre, post in analytics.lo_change %}<div class="bar-row"><span>{{ lo }}</span><div><div class="bar pre"><span style="width:{% widthratio pre analytics.paired 100 %}%"></span></div><div class="bar" style="margin-top:2px"><span style="width:{% widthratio post analytics.paired 100 %}%"></span></div></div><span class="small">{{ pre }} → {{ post }}</span></div>{% endfor %}
+    <p class="small muted">These are observed scores only. With small groups and no control group they do not prove that the game caused any change.</p>
+    {% else %}<p class="muted">No student has completed both assessments yet.</p>{% endif %}</div>
+</div>
+
+<h2>Students</h2>
+<div class="panel table-wrap">{% if summaries %}<table>
+  <tr><th>Student</th><th>Status</th><th>Rooms</th><th>Current</th><th>Best score</th><th>Mode</th><th>Attempts</th><th>Hints</th><th>Time</th>{% for lo in objectives %}<th title="{{ lo }}">{{ lo }}</th>{% endfor %}<th>Pre</th><th>Post</th><th></th></tr>
+  {% for s in summaries %}<tr><td><a href="{% url 'student_detail' classroom.pk s.student.pk %}">{{ s.student.username }}</a></td>
+    <td>{% if s.completed %}<span class="tag ok">completed</span>{% elif s.started %}<span class="tag warn">in progress</span>{% else %}<span class="tag">not started</span>{% endif %}</td>
+    <td>{{ s.rooms_done }}/4</td><td>{% if s.current is not None %}{{ s.current }}%{% else %}—{% endif %}</td><td>{{ s.score }}</td><td class="small">{{ s.mode }}</td><td>{{ s.attempts }}</td><td>{{ s.hints }}</td><td>{% if s.minutes %}{{ s.minutes }} min{% else %}—{% endif %}</td>
+    {% for lo, st in s.stats.items %}<td>{% if st.accuracy is not None %}{{ st.accuracy }}%{% else %}—{% endif %}</td>{% endfor %}
+    <td>{% if s.pre %}{{ s.pre.score }}/{{ s.pre.total }}{% else %}—{% endif %}</td><td>{% if s.post %}{{ s.post.score }}/{{ s.post.total }}{% else %}—{% endif %}</td>
+    <td><form method="post" action="{% url 'remove_student' classroom.pk s.student.pk %}" class="js-confirm" data-msg="Remove {{ s.student.username }} from {{ classroom.name }}? Their own game history is kept.">{% csrf_token %}<button class="btn btn-sm btn-danger" type="submit" aria-label="Remove {{ s.student.username }} from the classroom">Remove</button></form></td></tr>{% endfor %}
+</table><p class="small muted">Objective columns show accuracy = solved ÷ (solved + wrong answers).</p>{% else %}<p class="muted">No students yet. Share the join code <b>{{ classroom.join_code }}</b>.</p>{% endif %}</div>
+
+<div class="grid grid-2">
+  <div class="panel"><h2>Assignments</h2>{% for a in assignments %}<div class="btn-row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0"><p style="margin:0"><b>{{ a.title }}</b> — {{ a.get_required_mode_display }}{% if a.due_date %} · due {{ a.due_date }}{% endif %}<br><span class="small muted">{{ a.instructions }}</span></p>
+    <form method="post" action="{% url 'assignment_delete' classroom.pk a.pk %}" class="js-confirm" data-msg="Delete the assignment “{{ a.title }}”? Students' attempts are kept.">{% csrf_token %}<button class="btn btn-sm btn-danger" type="submit">Delete</button></form></div>{% empty %}<p class="muted">No assignments.</p>{% endfor %}</div>
+  <div class="panel"><h2>New assignment</h2><form method="post">{% csrf_token %}
+    <label for="a-title">Title</label><input id="a-title" name="title" type="text" value="CipherBreak: The 16-Round Escape">
+    <label for="a-mode">Required mode</label><select id="a-mode" name="mode"><option value="any">Student's choice</option><option value="guided">Guided</option><option value="challenge">Challenge</option></select>
+    <label for="a-ins">Instructions</label><input id="a-ins" name="instructions" type="text">
+    <label for="a-due">Due date (optional)</label><input id="a-due" name="due_date" type="date">
+    <button class="btn btn-teal" style="margin-top:10px" type="submit">Assign</button></form></div>
+</div>
+<div class="grid grid-2">
+  <div class="panel"><h2>Edit classroom</h2><form method="post" action="{% url 'classroom_edit' classroom.pk %}">{% csrf_token %}
+    <label for="e-name">Name</label><input id="e-name" name="name" type="text" value="{{ classroom.name }}" required>
+    <label for="e-desc">Description</label><input id="e-desc" name="description" type="text" value="{{ classroom.description }}">
+    <label class="choice"><input type="checkbox" name="new_code"> Generate a new join code (the old code stops working)</label>
+    <button class="btn btn-teal" type="submit" style="margin-top:10px">Save changes</button></form></div>
+  <div class="panel" style="border-color:var(--red)"><h2>Delete classroom</h2>
+    <p class="small">Deletes the classroom, its memberships and assignments. Students keep their own accounts and game history. This cannot be undone.</p>
+    <form method="post" action="{% url 'classroom_delete' classroom.pk %}">{% csrf_token %}
+    <label for="del-name">Type <b>{{ classroom.name }}</b> to confirm</label><input id="del-name" name="confirm_name" type="text" autocomplete="off">
+    <button class="btn btn-danger" type="submit" style="margin-top:10px">Delete classroom</button></form></div>
+</div>
+{% endblock %}
+{% block scripts %}<script>
+document.querySelectorAll("form.js-confirm").forEach(function (f) {
+  f.addEventListener("submit", function (e) { if (!confirm(f.dataset.msg)) e.preventDefault(); });
+});
+</script>{% endblock %}

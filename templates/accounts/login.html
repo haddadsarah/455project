@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block title %}Sign in{% endblock %}
+{% block content %}
+<div class="panel form-narrow"><h1>Sign in</h1>
+<form method="post" novalidate>{% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert error" role="alert">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
+  <label for="id_username">Username</label>{{ form.username }}
+  <label for="id_password">Password</label>{{ form.password }}
+  <input type="hidden" name="next" value="{{ next }}">
+  <div class="btn-row" style="margin-top:14px"><button class="btn btn-primary" type="submit">Sign in</button></div>
+</form>
+<p class="small" style="margin-top:12px"><a href="{% url 'password_reset' %}">Forgot your password?</a></p>
+<p class="small muted" style="margin-top:6px">New here? <a href="{% url 'register' %}">Create a student account</a> · Instructors: <a href="{% url 'register_instructor' %}">sign up with an invitation code</a></p></div>
+{% endblock %}

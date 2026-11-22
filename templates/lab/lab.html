@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% load static %}{% block title %}DES Learning Laboratory{% endblock %}
+{% block bodyclass %}{% if demo %}demo-mode{% endif %}{% endblock %}
+{% block content %}
+<h1>🔬 DES Learning Laboratory {% if demo %}<span class="tag purple">Instructor demonstration mode</span>{% endif %}</h1>
+<p class="muted">Enter any 64-bit message and key in hexadecimal. Every intermediate value is computed by CipherBreak's own DES engine. This lab works independently of the game.</p>
+<div class="panel">
+  <form id="lab-form" novalidate>
+    <div class="grid grid-2">
+      <div><label for="lab-block">Message / ciphertext block (16 hex digits)</label>
+        <input id="lab-block" class="mono" type="text" autocomplete="off" spellcheck="false" value="0123456789ABCDEF" aria-describedby="lab-block-help">
+        <div class="form-help" id="lab-block-help">Or type 8 ASCII characters: <input id="lab-ascii" type="text" maxlength="8" style="width:140px;display:inline-block;padding:4px 8px" class="mono" aria-label="8 ASCII characters to convert"> <button type="button" class="btn btn-sm" id="lab-a2h">→ hex</button></div></div>
+      <div><label for="lab-key">Key (16 hex digits)</label>
+        <input id="lab-key" class="mono" type="text" autocomplete="off" spellcheck="false" value="133457799BBCDFF1">
+        <label for="lab-vector">Load a standard test vector</label>
+        <select id="lab-vector"><option value="">— choose —</option>{% for v in vectors %}<option value="{{ forloop.counter0 }}">{{ v.name }}: {{ v.plaintext }} / {{ v.key }} → {{ v.ciphertext }}</option>{% endfor %}</select></div>
+    </div>
+    <div class="alert error hidden" id="lab-error" role="alert"></div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-primary" type="submit" data-mode="encrypt">🔒 Encrypt</button>
+      <button class="btn btn-teal" type="submit" data-mode="decrypt">🔓 Decrypt</button>
+      <label class="choice" style="margin:0"><input type="checkbox" id="lab-explain" checked> Show explanations</label>
+      {% if demo %}<a class="btn btn-sm" href="{% url 'instructor_demo' %}">Open any game room ▶</a>{% endif %}
+    </div>
+  </form>
+</div>
+<div id="lab-out" class="hidden">
+  <div class="panel"><h2 id="lab-summary-h">Result</h2><div id="lab-summary"></div></div>
+  <div class="panel"><div class="btn-row" role="tablist" aria-label="Lab views">
+      <button class="btn btn-sm btn-primary" type="button" role="tab" data-tab="rounds" aria-selected="true">16 rounds</button>
+      <button class="btn btn-sm" type="button" role="tab" data-tab="keys" aria-selected="false">Key schedule</button>
+      <button class="btn btn-sm" type="button" role="tab" data-tab="tables" aria-selected="false">DES tables</button></div>
+    <div id="tab-rounds" style="margin-top:12px"></div>
+    <div id="tab-keys" class="hidden" style="margin-top:12px"></div>
+    <div id="tab-tables" class="hidden" style="margin-top:12px"></div>
+  </div>
+</div>
+<p class="disclaimer">Educational simulator. DES is obsolete — use modern authenticated encryption (e.g. AES-GCM) for real data.</p>
+{{ vectors|json_script:"lab-vectors" }}{{ tables|json_script:"lab-tables" }}
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/trace.js' %}"></script><script src="{% static 'js/lab.js' %}"></script>{% endblock %}

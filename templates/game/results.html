@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% block title %}Results{% endblock %}
+{% block content %}
+<h1>{% if attempt.status == "completed" %}🎓 Mission results{% else %}Adventure results{% endif %}</h1>
+<p><span class="tag purple">{{ attempt.label }}</span> <span class="tag">{{ attempt.get_status_display }}</span> started {{ attempt.started_at|date:"M j, Y H:i" }}
+{% if attempt.integrity_note %}<br><span class="small muted">Note: {{ attempt.integrity_note }} This attempt is recorded as practice, not as an independent challenge.</span>{% endif %}</p>
+<div class="grid grid-4">
+  <div class="panel stat"><b>{{ attempt.score }}</b>Final score</div>
+  <div class="panel stat"><b>{{ active_minutes }} min</b>Active time <span class="small muted">({{ wall_minutes }} min wall clock)</span></div>
+  <div class="panel stat"><b>{{ rooms_completed }}/4</b>Rooms completed</div>
+  <div class="panel stat"><b>{{ hints_used }} · {{ mistakes }}</b>Hints · mistakes</div>
+</div>
+<div class="grid grid-2" style="margin-top:16px">
+  <div class="panel"><h2>DES concepts mastered</h2>{% for lo, t in mastered %}<p>✓ <b>{{ lo }}</b> {{ t }}</p>{% empty %}<p class="muted">Nothing fully mastered yet — keep going!</p>{% endfor %}</div>
+  <div class="panel"><h2>Concepts requiring more practice</h2>{% for lo, t in practice %}<p>↻ <b>{{ lo }}</b> {{ t }}</p>{% empty %}<p class="muted">None — excellent work.</p>{% endfor %}
+    <p class="small muted">Mastered = solved with no wrong answers and at most one hint.</p></div>
+</div>
+<div class="panel"><h2>Achievements from this adventure</h2><div class="badge-grid">{% for a in achievements %}<div class="badge earned"><span class="ic">{{ a.icon }}</span><b>{{ a.name }}</b></div>{% empty %}<p class="muted">No new achievements in this adventure.</p>{% endfor %}</div></div>
+<div class="panel"><h2>Challenge breakdown</h2><div class="table-wrap"><table><tr><th>Room</th><th>Challenge</th><th>Objective</th><th>Solved</th><th>Wrong answers</th><th>Hints</th><th>Points</th></tr>
+{% for p in puzzles %}<tr><td>{{ p.room }}</td><td class="mono">{{ p.puzzle_id }}{% if p.optional %} ★{% endif %}</td><td>{{ p.objective }}</td><td>{% if p.solved %}✓{% else %}—{% endif %}</td><td>{{ p.wrong_attempts }}</td><td>{{ p.hint_level }}</td><td>{{ p.points }}</td></tr>{% endfor %}</table></div>
+<p class="small muted">Points per challenge = 100 − 10 × wrong answers − hint penalties (Challenge mode), never below 0. +50 per completed room.</p></div>
+<div class="btn-row">
+  <form method="post" action="{% url 'new_adventure' %}">{% csrf_token %}<input type="hidden" name="mode" value="{% if attempt.mode == 'challenge' %}challenge{% else %}guided{% endif %}"><button class="btn btn-primary">↻ Play Again</button></form>
+  {% if attempt.status == "completed" and not post_taken %}<a class="btn btn-amber" href="{% url 'assessment' 'post' %}?attempt={{ attempt.id }}">📝 Take the post-assessment</a>{% endif %}
+  <a class="btn" href="{% url 'lab' %}">🔬 Explore DES</a><a class="btn" href="{% url 'dashboard' %}">Return to Dashboard</a></div>
+{% endblock %}

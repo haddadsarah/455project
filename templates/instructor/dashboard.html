@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% block title %}Instructor dashboard{% endblock %}
+{% block content %}
+<h1>Instructor dashboard</h1>
+<div class="grid grid-2">
+  <div class="panel"><h2>Your classrooms</h2>
+    {% for c in classrooms %}<div class="panel"><h3><a href="{% url 'classroom_detail' c.pk %}">{{ c.name }}</a></h3>
+      <p class="small">Join code <b class="mono" style="font-size:1.1rem">{{ c.join_code }}</b> {% include "instructor/_copy.html" with text=c.join_code %} · {{ c.memberships.count }} student{{ c.memberships.count|pluralize }} · {{ c.assignments.count }} assignment{{ c.assignments.count|pluralize }}</p>
+      <a class="btn btn-sm btn-primary" href="{% url 'classroom_detail' c.pk %}">View progress &amp; analytics</a></div>
+    {% empty %}<p class="muted">No classrooms yet. Create one to get a join code for your students.</p>{% endfor %}</div>
+  <div>
+    <div class="panel"><h2>Create a classroom</h2><form method="post">{% csrf_token %}
+      <label for="c-name">Classroom name</label><input id="c-name" name="name" type="text" required placeholder="EECE 455 — Section 1">
+      <label for="c-desc">Description (optional)</label><input id="c-desc" name="description" type="text">
+      <label for="c-mode">Required mode for the default assignment</label><select id="c-mode" name="mode"><option value="any">Student's choice</option><option value="guided">Guided</option><option value="challenge">Challenge</option></select>
+      <button class="btn btn-teal" type="submit" style="margin-top:10px">Create classroom</button></form></div>
+    <div class="panel"><h2>Teach with CipherBreak</h2>
+      <div class="btn-row"><a class="btn btn-primary" href="{% url 'instructor_demo' %}">🎓 Demonstration mode (open any room)</a>
+      <a class="btn" href="{% url 'lab' %}?demo=1">🔬 DES Lab — lecture view</a></div>
+      <p class="small muted">Demonstration mode opens any room without prerequisites and can use your own message and key. Demo attempts never appear in student analytics.</p></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,30 +1,31 @@
 {% extends "base.html" %}
-{% block title %}For educators · CipherBreak EDU{% endblock %}
+{% block title %}For Educators{% endblock %}
 {% block content %}
-<div class="shell page-stack">
-  <section class="page-heading wide">
-    <p class="overline">FOR EDUCATORS</p>
-    <h1>Teach the <em>cipher in motion.</em></h1>
-    <p>Follow the values behind the DES diagrams. CipherBreak EDU gives students practice with fictional data and gives instructors a tool for live demonstrations and classroom assessment.</p>
-    <div class="actions"><a class="button button-green" href="{% url 'lab' %}">Open DES laboratory</a><a class="button button-ghost" href="{% url 'login' %}">Instructor sign in</a></div>
-  </section>
-  <section class="card">
-    <h2>A 25-minute classroom activity</h2>
-    <ol class="lesson-list">
-      <li><strong>5 min · Set the baseline.</strong> Open the optional pre-assessment and discuss the difference between the block width and effective key length.</li>
-      <li><strong>5 min · Walk through the Hex Gate and Key Vault.</strong> Build a 64-bit block, follow IP, and demonstrate PC-1, rotating C and D, and PC-2.</li>
-      <li><strong>10 min · Investigate the Reactor and Decryption Chamber.</strong> Demonstrate the S-box lookup, inspect a Feistel round and trace the reversed decryption keys.</li>
-      <li><strong>5 min · Compare and discuss.</strong> Use the post-assessment to review the same outcomes and explain the 56-bit key limitation. Assign a full mission for independent practice.</li>
-    </ol>
-  </section>
-  <div class="three-col">
-    <section class="card"><h2>Classroom assignments</h2><p>Share a join code and set a required mode. The dashboard distinguishes guided practice, independent challenges and assisted challenges.</p></section>
-    <section class="card"><h2>Learning evidence</h2><p>Review room completion, accuracy, hints and optional assessment results. Download an assignment CSV for your own class.</p></section>
-    <section class="card"><h2>Live demonstration</h2><p>Start in any room with your own block and key or a known-answer example. Select a round, expand its S-boxes, and replay the operation sequence.</p></section>
-  </div>
-  <section class="card">
-    <h2>Proposed adoption model</h2>
-    <p>A free student demonstration and classroom trial could lead to department licensing, with additional cryptography modules developed around university curricula.</p>
-  </section>
+<h1>CipherBreak EDU for Educators</h1>
+<p class="muted">A proposed educational-technology product for university cryptography courses.</p>
+<div class="grid grid-2">
+  <div class="panel"><h2>The problem</h2><p>DES combines permutations, key transformations, binary manipulation, S-box substitutions and 16 Feistel rounds. Static slides show the names of these steps, but students rarely see how the values actually change — and instructors struggle to demonstrate intermediate calculations or to check who really understood them.</p></div>
+  <div class="panel"><h2>The solution</h2><p>An escape-room game where every lock is a real DES operation, computed by a traced DES engine. Students learn by doing, get immediate targeted feedback, and can always inspect the full 16-round trace. Instructors get classrooms, learning-objective analytics and a lecture demonstration mode.</p></div>
+</div>
+<div class="panel"><h2>How the four rooms teach DES</h2><div class="table-wrap"><table>
+  <tr><th>Room</th><th>Students practise</th></tr>
+  <tr><td>1 · Hex Gate</td><td>ASCII → hex, the 64-bit block, Initial Permutation, splitting into L0/R0</td></tr>
+  <tr><td>2 · Key Vault</td><td>Parity &amp; 56 effective bits, PC-1, C0/D0, the shift schedule, PC-2, all 16 round keys</td></tr>
+  <tr><td>3 · Round Reactor</td><td>Expansion E, XOR with the round key, S-box row/column lookup, P, the Feistel update, the final swap and IP⁻¹</td></tr>
+  <tr><td>4 · Decryption Chamber</td><td>Reversed key order, a decryption round, recovering the plaintext, why DES is obsolete</td></tr></table></div></div>
+<div class="grid grid-2">
+  <div class="panel"><h2>Learning analytics</h2><ul class="feature-list">{% for lo, text in objectives.items %}<li><b>{{ lo }}</b> {{ text }}</li>{% endfor %}</ul>
+    <p class="small">Per student: rooms completed, score, accuracy per objective, attempts, hints, time, pre/post assessment. Per class: completion rate, averages, most-missed concepts. CSV export. Only real recorded data is shown.</p></div>
+  <div class="panel"><h2>Sample 20–30 minute class activity</h2><ol>
+    <li>(3 min) Students join your classroom with the join code and take the optional pre-assessment.</li>
+    <li>(5 min) Instructor demo mode: walk through one round on the projector with the classic test vector.</li>
+    <li>(15 min) Students play Rooms 1–3 in Guided mode in pairs.</li>
+    <li>(5 min) Review the class "most missed concepts" chart together; assign Room 4 + post-assessment as homework.</li></ol></div>
+</div>
+<div class="grid grid-2">
+  <div class="panel"><h2>Proposed business model</h2><ul class="feature-list"><li>Free student demonstration.</li><li>Instructor classroom trial.</li><li>University or department licensing.</li><li>Additional cryptography modules (e.g. AES, modes of operation, RSA) in future versions.</li></ul>
+    <p class="small muted">These are proposed opportunities for a student project. We do not claim existing customers, revenue, partnerships or published research results.</p></div>
+  <div class="panel"><h2>Value</h2><p><b>Students:</b> engaging, immediate feedback, personalised practice, learning by doing, revisit hard concepts any time.</p><p><b>Professors:</b> interactive lecture demonstrations, ready-made activities, automated practice, outcome monitoring, visibility into common misconceptions.</p>
+    <div class="btn-row"><a class="btn btn-primary" href="{% url 'register_instructor' %}">Instructor sign-up</a><a class="btn" href="{% url 'lab' %}">Try the DES Lab</a></div></div>
 </div>
 {% endblock %}

@@ -5,3 +5,5 @@ __pycache__/
 *.sqlite3-*
 .env
 staticfiles/
+.dev_secret_key
+ui_shots/
