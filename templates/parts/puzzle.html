@@ -6,7 +6,7 @@
   <div class="widget">
     <p class="widget-label">Tap a character to inspect its byte.</p>
     <div class="byte-list" aria-label="Access code">{% for character, decimal, binary, hex in puzzle.data.characters %}
-      <button type="button" data-byte="{{ character }}|{{ decimal }}|{{ binary }}|{{ hex }}" aria-pressed="false" aria-label="Inspect character {{ forloop.counter }}, {{ character }}">{{ character }}</button>
+      <button type="button" data-byte="{{ character }}|{{ decimal }}|{{ binary }}|{{ hex }}" aria-pressed="false" {% if attempt.generator_version >= 2 and forloop.counter > 2 %}data-byte-independent{% endif %} aria-label="Inspect character {{ forloop.counter }}, {{ character }}">{{ character }}</button>
     {% endfor %}</div>
     <p class="inspect-output" data-byte-output aria-live="polite">Select a character.</p>
   </div>
@@ -43,6 +43,10 @@
   <div class="widget">
     <p class="widget-label">S{{ puzzle.data.box.number }} input · Outer bits select row, middle bits select column.</p>
     <div class="sbox-input" aria-label="Input {{ puzzle.data.box.input }}">{% for bit in puzzle.data.box.input %}<span {% if forloop.first or forloop.last %}class="row-bit"{% else %}class="column-bit"{% endif %}>{{ bit }}</span>{% endfor %}</div>
+    {% if attempt.generator_version >= 2 and not state.solved %}<div class="sbox-form">
+      <label>Decimal row<input type="number" name="sbox_row" min="0" max="3" required></label>
+      <label>Decimal column<input type="number" name="sbox_col" min="0" max="15" required></label>
+    </div>{% endif %}
     <div class="table-scroll sbox-scroll">
       <table class="sbox" data-roving data-columns="16">
         <caption class="sr-only">S{{ puzzle.data.box.number }} lookup table</caption>
@@ -64,5 +68,6 @@
   <button class="button button-green" type="submit">Verify answer</button>
 {% elif puzzle.widget != "sbox" %}
   <label class="widget-label" for="answer-field">{% if puzzle.widget == 'pair' %}New left and right halves{% elif puzzle.widget == 'recover' %}Eight-character access code{% else %}Hexadecimal answer{% endif %}</label>
+  {% if puzzle.widget == 'ascii' %}<div class="keypad" aria-label="Hexadecimal keypad">{% for digit in '0123456789ABCDEF' %}<button type="button" data-classroom-key="{{ digit }}">{{ digit }}</button>{% endfor %}<button type="button" data-classroom-key="back" aria-label="Backspace">⌫</button></div>{% endif %}
   <div class="input-row"><input id="answer-field" class="mono answer-field" name="answer" type="text" autocapitalize="characters" spellcheck="false" maxlength="32" {% if puzzle.widget == 'pair' %}placeholder="00000000 00000000"{% endif %} required><button class="button button-green" type="submit">Verify answer</button></div>
 {% endif %}

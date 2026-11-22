@@ -138,7 +138,7 @@ for (const button of all("[data-byte]")) {
     const widget = button.closest(".widget");
     for (const sibling of all("[data-byte]", widget)) sibling.setAttribute("aria-pressed", String(sibling === button));
     const [character, decimal, binary, hex] = button.dataset.byte.split("|");
-    widget.querySelector("[data-byte-output]").textContent = `${character} · ASCII ${decimal} · Binary ${binary} · Hex ${hex}`;
+    widget.querySelector("[data-byte-output]").textContent = `${character} · ASCII ${decimal} · Binary ${binary}` + (button.hasAttribute("data-byte-independent") ? "" : ` · Hex ${hex}`);
   });
 }
 

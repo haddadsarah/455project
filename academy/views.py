@@ -9,15 +9,27 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.http import Http404, HttpResponse, HttpResponseBadRequest
+from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from . import des, forms, game
+from . import des, forms, game, lessons
 from .curriculum import ASSESSMENTS, BADGES, NOTEBOOK, OUTCOMES, ROOMS
 from .models import Assessment, Assignment, Attempt, Classroom, Membership, Mode, Profile
+
+ROOM_OBJECTS = (
+    (("card", "Access card", 29, 71, "▱", ()), ("terminal", "Access terminal", 68, 49, "▦", ("ascii", "block")),
+     ("ip", "IP switchboard", 37, 41, "⌗", ("ip", "halves"))),
+    (("key", "Key bank", 20, 68, "⌗", ("parity",)), ("pc1", "PC-1 control", 30, 39, "◉", ("pc1", "split")),
+     ("rotate", "Rotation disks", 54, 54, "◎", ("rotate",)), ("pc2", "PC-2 control", 80, 45, "◈", ("pc2", "subkey"))),
+    (("expand", "Expansion", 16, 62, "↔", ("expand",)), ("xor", "XOR relay", 27, 41, "⊕", ("xor",)),
+     ("sbox", "S-box array", 44, 31, "▦", ("sbox", "advanced")), ("p", "P router", 60, 41, "⌗", ("p",)),
+     ("feistel", "Feistel XOR", 73, 61, "⊕", ("feistel_xor",)), ("register", "Registers", 86, 42, "⇄", ("feistel",))),
+    (("schedule", "Subkey console", 27, 56, "⇄", ("order",)), ("decrypt", "Decryption terminal", 56, 60, "▦", ("decrypt", "recover")),
+     ("verdict", "Security console", 79, 48, "◈", ("verdict",))),
+)
 
 VECTORS = (
     ("FIPS classroom example", "0123456789ABCDEF", "133457799BBCDFF1", "85E813540F0AB405"),
@@ -126,7 +138,18 @@ def play(request, pk):
                                (s.solved or (p.optional and state.completed and not attempt.completed_at))), None)
         puzzle, progress = selected_entry or current or (None, None)
         required = [s for p, s in entries if not p.optional]
+        solved_codes = {p.code for p, progress in entries if progress.solved}
+        present_codes = {p.code for p, _ in entries}
+        objects = [
+            {"id": label_id, "label": label, "x": x, "y": y, "icon": icon,
+             "active": bool((puzzle and puzzle.code in codes) or label_id == "card"),
+             "powered": bool(solved_codes.intersection(codes))}
+            for label_id, label, x, y, icon, codes in ROOM_OBJECTS[number - 1]
+            if (label_id == "card" and not state.clue_collected) or present_codes.intersection(codes)
+        ]
         context.update({
+            "objects": objects, "code": mission.message, "clue_collected": state.clue_collected or number > 1,
+            "solved_count": sum(progress.solved for progress in required),
             "room": context["rooms"][number - 1], "room_entries": entries, "room_state": state,
             "room_percent": sum(s.solved for s in required) * 100 // len(required), "puzzle": puzzle, "state": progress,
             "active_index": next((i for i, (p, _) in enumerate(entries, 1) if p == puzzle), 0),
@@ -181,13 +204,31 @@ def answer(request, pk):
     if not form.is_valid():
         messages.error(request, "Choose an answer or fill in the terminal field.")
         return redirect("play", pk=pk)
+    classroom_request = request.POST.get("room_console") == "1"
+    if attempt.generator_version >= 2:
+        room, challenge, progress = game.get_playable(attempt, attempt.current_room, form.cleaned_data["code"])
+        if not progress.solved and attempt.mode == Mode.GUIDED and progress.lesson_stage < 3:
+            messages.error(request, "Verify the guided practice signal before applying it to this mission.")
+            return redirect(f"{reverse('play', args=[pk])}?console=1")
+        if not progress.solved and room.number == 1 and not room.clue_collected:
+            messages.error(request, "Collect the access card in the corridor first.")
+            return redirect("play", pk=pk)
+        if not progress.solved and challenge.widget == "sbox":
+            row = request.POST.get("sbox_row", "")
+            col = request.POST.get("sbox_col", "")
+            if not row.isascii() or not row.isdecimal() or not col.isascii() or not col.isdecimal() or f"{row},{col}" != form.cleaned_data["answer"]:
+                messages.error(request, "Calculate the row and column and select their intersection before verifying.")
+                return redirect(f"{reverse('play', args=[pk])}?puzzle={challenge.code}&console=1")
     status, puzzle = game.submit(attempt, attempt.current_room, **form.cleaned_data)
     if status == "correct":
         messages.success(request, puzzle.feedback)
     elif status == "incorrect":
         messages.error(request, f"Not quite. {puzzle.hints[0]}")
+    console = "&console=1" if classroom_request and status == "incorrect" else ""
     if puzzle.optional:
-        return redirect(f"{reverse('play', args=[pk])}?puzzle={puzzle.code}")
+        return redirect(f"{reverse('play', args=[pk])}?puzzle={puzzle.code}{console}")
+    if console:
+        return redirect(f"{reverse('play', args=[pk])}?console=1")
     return redirect("play", pk=pk)
 
 
@@ -215,6 +256,29 @@ def tutorial(request, pk):
     kind = request.POST.get("kind")
     if kind == "onboarding":
         Profile.objects.update_or_create(user=request.user, defaults={"onboarding_seen": True})
+    elif kind == "collected":
+        if attempt.current_room != 1:
+            raise PermissionDenied
+        attempt.rooms.filter(number=1).update(clue_collected=True)
+        return JsonResponse({"collected": True})
+    elif kind == "lesson":
+        code = request.POST.get("code", "")
+        _, puzzle, progress = game.get_playable(attempt, attempt.current_room, code)
+        action = request.POST.get("action")
+        stage = progress.lesson_stage
+        if action == "learn" and stage == 0:
+            stage = 1
+        elif action == "demonstrate" and stage == 1:
+            stage = 2
+        elif action == "practice" and stage >= 2:
+            answer = lessons.normalize_practice(request.POST.get("answer", ""))
+            if answer != lessons.practice_answer(puzzle):
+                return JsonResponse({"stage": stage, "correct": False})
+            stage = 3
+        if stage != progress.lesson_stage:
+            progress.lesson_stage = stage
+            progress.save(update_fields=["lesson_stage"])
+        return JsonResponse({"stage": stage, "correct": action == "practice" and stage == 3})
     elif kind == "room":
         number = request.POST.get("room", str(attempt.current_room))
         if number not in {"1", "2", "3", "4"} or int(number) > attempt.unlocked_room:

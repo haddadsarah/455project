@@ -10,6 +10,7 @@
   <title>{% block title %}CipherBreak EDU{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'site.css' %}">
   <script src="{% static 'site.js' %}" defer></script>
+  {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
 <a class="skip" href="#main">Skip to content</a>

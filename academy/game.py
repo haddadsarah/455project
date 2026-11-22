@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from .curriculum import OUTCOMES, ROOMS
 from .models import Attempt, EarnedBadge, Mode, PuzzleProgress, RoomProgress, Submission
-from .puzzles import build_mission
+from .puzzles import build_mission, build_mission_v2
 
 HINT_COSTS = (0, 10, 20, 30)
 ROOM_BONUS = 50
@@ -20,6 +20,8 @@ def mission_for(attempt):
     # Keep prior generation rules here if a new generator version is introduced.
     if attempt.generator_version == 1:
         return build_mission(attempt.seed)
+    if attempt.generator_version == 2:
+        return build_mission_v2(attempt.seed)
     raise ValueError("Unknown mission generator version.")
 
 
@@ -28,11 +30,11 @@ def create_attempt(student, mode, assignment=None, timed=False):
     recent = set(student.attempts.values_list("seed", flat=True)[:5])
     recent_codes = {build_mission(seed).message for seed in recent}
     seed = token_hex(16)
-    mission = build_mission(seed)
+    mission = build_mission_v2(seed)
     while mission.message in recent_codes:
         seed = token_hex(16)
-        mission = build_mission(seed)
-    attempt = Attempt.objects.create(student=student, assignment=assignment, seed=seed, mode=mode, timed=timed)
+        mission = build_mission_v2(seed)
+    attempt = Attempt.objects.create(student=student, assignment=assignment, seed=seed, mode=mode, timed=timed, generator_version=2)
     for number, puzzles in enumerate(mission.rooms, 1):
         room = RoomProgress.objects.create(attempt=attempt, number=number)
         PuzzleProgress.objects.bulk_create(PuzzleProgress(room=room, code=p.code, outcome=p.outcome) for p in puzzles)

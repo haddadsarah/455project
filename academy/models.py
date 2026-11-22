@@ -87,6 +87,7 @@ class RoomProgress(models.Model):
     attempt = models.ForeignKey(Attempt, on_delete=models.CASCADE, related_name="rooms")
     number = models.PositiveSmallIntegerField()
     tutorial_seen = models.BooleanField(default=False)
+    clue_collected = models.BooleanField(default=False)
     completed = models.BooleanField(default=False)
     score = models.PositiveIntegerField(default=0)
 
@@ -102,6 +103,7 @@ class PuzzleProgress(models.Model):
     solved = models.BooleanField(default=False)
     mistakes = models.PositiveIntegerField(default=0)
     hint_level = models.PositiveSmallIntegerField(default=0)
+    lesson_stage = models.PositiveSmallIntegerField(default=0)
     score = models.PositiveSmallIntegerField(default=0)
 
     class Meta:

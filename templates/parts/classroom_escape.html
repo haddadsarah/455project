@@ -1,0 +1,109 @@
+<div class="field-stage theme-{{ room.slug }}{% if room_state.completed %} door-ready{% endif %}" data-classroom-escape
+     data-room="{{ room.number }}" data-auto="{% if room_auto %}room{% endif %}" data-mode="{{ attempt.mode }}"
+     data-stage="{{ state.lesson_stage|default:0 }}" data-puzzle="{{ puzzle.code }}" data-solved="{{ state.solved|yesno:'yes,no' }}"
+     data-tutorial-url="{% url 'tutorial' attempt.pk %}" data-collected="{{ clue_collected|yesno:'yes,no' }}">
+  <div class="field-backdrop" aria-hidden="true"></div><div class="field-light" aria-hidden="true"></div><div class="field-particles" aria-hidden="true"></div>
+  <header class="field-hud">
+    <div class="hud-location"><span>LAB {{ room.number }} / 4 · {{ attempt.classification }}</span><h1>{{ room.name }}</h1></div>
+    <div class="hud-stats"><span><strong>{{ attempt.score }}</strong> pts</span><span><strong>{{ solved_count }}/{{ required_count }}</strong> circuits</span>{% if attempt.timed %}<span data-elapsed="{{ attempt.duration }}" data-complete="{{ attempt.completed_at|yesno:'true,false' }}"><strong>{{ elapsed }}</strong></span>{% endif %}</div>
+    <nav aria-label="Mission controls">
+      <button class="hud-control" type="button" data-console="inventory">Inventory <span data-inventory-count>{{ clue_collected|yesno:"1,0" }}</span></button>
+      <button class="hud-control" type="button" data-console="hint">Hint</button>
+      <button class="hud-control" type="button" data-console="notebook">Notebook</button>
+      <button class="hud-control" type="button" data-console="pause">Pause</button>
+    </nav>
+  </header>
+  <div class="field-hotspots" aria-label="Room objects">
+    {% for object in objects %}
+    <button class="hotspot{% if object.active %} is-active{% endif %}{% if object.powered %} is-powered{% endif %}{% if object.id == 'card' and not clue_collected and not room_state.tutorial_seen %} guide-target{% endif %}"
+            type="button" data-object="{{ object.id }}" data-title="{{ object.label }}" data-powered="{{ object.powered|yesno:'yes,no' }}"
+            {% if object.active and object.id != 'card' %}data-console="task"{% endif %} style="--x:{{ object.x }}%;--y:{{ object.y }}%"
+            aria-label="{{ object.label }}"><span class="hotspot-icon" aria-hidden="true">{{ object.icon }}</span><span class="hotspot-label">{{ object.label }}</span></button>
+    {% endfor %}
+    <button class="hotspot{% if room_state.completed %} is-active{% endif %}" type="button" data-console="door" aria-label="{% if room_state.completed %}Open door{% else %}Inspect door{% endif %}" style="--x:{% if room.number == 1 %}51{% else %}68{% endif %}%;--y:79%">
+      <span class="hotspot-icon" aria-hidden="true">◇</span><span class="hotspot-label">Security door</span>
+    </button>
+  </div>
+  {% if room.slug == "reactor" %}<ol class="reactor-rail" aria-label="Reactor status">
+    {% for object in objects %}<li {% if object.powered %}class="is-powered"{% endif %}>{% if object.powered %}✓{% else %}○{% endif %} {{ object.label }}</li>{% endfor %}
+  </ol>{% endif %}
+  <div class="field-objective">
+    <span class="objective-orb" aria-hidden="true">✳</span>
+    <div><p class="overline">NOVA · OBJECTIVE</p><p data-objective>{% if room_state.completed %}Access granted. Approach the door.{% elif room.number == 1 and not clue_collected %}Inspect the access card to begin.{% else %}{{ puzzle.title }}{% endif %}</p></div>
+  </div>
+  <aside class="field-coach" data-field-guide {% if room.number != 1 or clue_collected or room_state.tutorial_seen %}hidden{% endif %}>
+    <p class="overline">NOVA · HOW TO PLAY</p><strong>Inspect the glowing card</strong><p>Select it to pick it up. Use Inventory to examine your clue again.</p>
+    <button type="button" class="nav-text" data-dismiss-guide>Dismiss tip</button>
+  </aside>
+  <div class="field-dim" data-field-dim {% if room.number != 1 or clue_collected or room_state.tutorial_seen %}hidden{% endif %}></div>
+
+  <dialog class="field-dialog" aria-label="Room console" data-classroom-dialog>
+    <button type="button" class="field-close" data-close-console aria-label="Return to room">×</button>
+    <section data-station="object" hidden><h2 data-object-title></h2><p data-object-status></p></section>
+    <section data-station="inventory" hidden><h2>Inventory</h2>
+      <div class="inventory-card" data-access-card {% if not clue_collected and room.number == 1 %}hidden{% endif %}>
+        <span aria-hidden="true">▱</span><div><strong>Facility access card</strong><p><code>{{ code }}</code></p></div>
+      </div>
+      <p data-inventory-empty {% if clue_collected or room.number != 1 %}hidden{% endif %}>Inspect the corridor to pick up a clue.</p>
+      <p data-card-instructions {% if not clue_collected and room.number == 1 %}hidden{% endif %}>Use the eight-character code at the access terminal.</p>
+    </section>
+    <section data-station="task" hidden>
+      <div data-classroom-lesson hidden></div>
+      {% if puzzle %}
+      <div data-classroom-apply>
+        <p class="overline">APPLY · {{ puzzle.outcome }}</p><h2>{{ puzzle.title }}</h2><p>{{ puzzle.prompt }}</p>
+        {% if decrypted %}<div class="sequence" data-sequence>
+          <button type="button" class="button button-small button-ghost" data-run-sequence>Run 16-round decryption</button>
+          <div class="sequence-track" aria-hidden="true">{% for n in round_selector reversed %}<span>K{{ n }}</span>{% endfor %}</div>
+          <p class="sequence-value">Recovered block <code>{{ decrypted }}</code></p>
+        </div>{% endif %}
+        <form class="puzzle-form" method="post" action="{% url 'answer' attempt.pk %}" {% if puzzle.widget == 'sbox' %}data-sbox-form{% endif %}>{% csrf_token %}
+          <input type="hidden" name="code" value="{{ puzzle.code }}"><input type="hidden" name="request_id" value="{{ request_id }}"><input type="hidden" name="room_console" value="1">
+          {% include "parts/puzzle.html" %}
+        </form>
+        <div class="actions"><button type="button" class="button button-small button-ghost" data-replay-lesson>Replay lesson</button>
+          <button type="button" class="nav-text" data-console="hint">Ask NOVA</button></div>
+      </div>
+      {% else %}<p>All required circuits in this room are powered.</p>{% endif %}
+    </section>
+    <section data-station="door" hidden>
+      {% if room_state.completed %}
+      <p class="overline">ACCESS GRANTED</p><h2>{{ room.badge }}</h2><p>{{ room.summary }}</p><p>{{ room_state.score }} points · Includes a 50-point room bonus.</p>
+      {% if ciphertext %}<div class="sequence" data-sequence>
+        <button type="button" class="button button-small button-ghost" data-run-sequence>Replay 16-round encryption</button>
+        <div class="sequence-track" aria-hidden="true">{% for n in round_selector %}<span>{{ n }}</span>{% endfor %}</div>
+        <p class="sequence-value">Ciphertext <code>{{ ciphertext }}</code></p>
+      </div>{% endif %}
+      {% if room.number == 2 %}<div class="sequence-track" aria-label="16 round subkeys ready">{% for n in round_selector %}<span class="lit">K{{ n }}</span>{% endfor %}</div>{% endif %}
+      <div class="actions">
+        <form method="post" action="{% url 'navigate' attempt.pk %}">{% csrf_token %}
+          {% if room.number == 4 %}<input type="hidden" name="action" value="results"><button class="button button-green" type="submit">Open the exit</button>
+          {% else %}<input type="hidden" name="action" value="enter"><input type="hidden" name="room" value="{{ room.number|add:1 }}"><button class="button button-green" type="submit">Enter room {{ room.number|add:1 }}</button>{% endif %}
+        </form>
+        {% for step, progress in room_entries %}{% if step.optional and not attempt.completed_at %}
+        <a class="button button-ghost" href="?puzzle={{ step.code }}&amp;console=1">{% if progress.solved %}Review{% else %}Try{% endif %} optional S-box</a>{% endif %}{% endfor %}
+      </div>
+      {% else %}<h2>Security door locked</h2><p>Complete the highlighted machine and the remaining room operations to unlock the door.</p>{% endif %}
+    </section>
+    <section data-station="hint" hidden>
+      <div class="nova-indicator"><span aria-hidden="true">✳</span>NOVA</div><h2>Mission help</h2>
+      {% if puzzle and not state.solved %}
+      <p>Current operation · {{ puzzle.title }}</p>
+      {% if hint_lines %}<ol class="hint-list">{% for line in hint_lines %}<li>{{ line }}</li>{% endfor %}</ol>{% endif %}
+      {% if next_hint <= 3 %}<form method="post" action="{% url 'hint' attempt.pk %}">{% csrf_token %}<input type="hidden" name="code" value="{{ puzzle.code }}"><input type="hidden" name="level" value="{{ next_hint }}"><button class="button button-ghost" type="submit">Reveal hint {{ next_hint }} · −10 pts</button></form>{% endif %}
+      <button type="button" class="nav-text" data-replay-lesson>Try tutorial example</button>
+      {% else %}<p>Review the powered machines or approach the door.</p>{% endif %}
+    </section>
+    <section data-station="notebook" hidden><h2>DES notebook</h2><p>Review earlier operations and inspect the actual DES trace.</p>
+      <ol>{% for step, progress in room_entries %}<li>{% if progress.solved %}<a href="?puzzle={{ step.code }}&amp;console=1">{{ step.title }}</a> ✓{% else %}{{ step.title }}{% endif %}</li>{% endfor %}</ol>
+      <div class="actions"><a class="button button-ghost" href="{% url 'notebook' attempt.pk %}">Learning notebook</a><a class="button button-ghost" href="{% url 'attempt_lab' attempt.pk %}">Round and subkey inspector</a></div>
+    </section>
+    <section data-station="pause" hidden><h2>Mission paused</h2><p>Your score, room, and lessons are saved to your account.</p>
+      <label class="inline-option"><input type="checkbox" data-sound> Sound effects</label>
+      <div class="actions"><button class="button button-green" type="button" data-close-console>Resume</button><button class="button button-ghost" type="button" data-console="guide">How to Play</button>
+        <a class="button button-ghost" href="{% url 'dashboard' %}">Dashboard</a></div>
+    </section>
+    <section data-station="guide" hidden><h2>How to Play</h2><ol><li>Use the glowing room objects to collect clues and approach machines.</li><li>Complete the worked example and practice signal before applying it to the mission.</li><li>Use Hint to ask NOVA. The total deduction grows by ten points per hint level.</li><li>Use Notebook to revisit operations. The dashboard keeps your previous adventures.</li></ol><button class="button button-green" type="button" data-close-console>Return to room</button></section>
+  </dialog>
+  <form id="classroom-token" hidden>{% csrf_token %}</form>
+</div>

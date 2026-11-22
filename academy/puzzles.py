@@ -195,3 +195,31 @@ def build_mission(seed):
                                ("hex", "Its hexadecimal representation exposes the key."))),
     )
     return Mission(message, enc, dec, (hex_gate, key_vault, reactor, chamber), round_data["number"])
+
+
+def build_mission_v2(seed):
+    """Preserve v1 inputs and append two hands-on operations for new adventures."""
+    mission = build_mission(seed)
+    gate, vault, reactor, exit_room = mission.rooms
+    shifted = vault[3].data["round"]
+    subkey = shifted["subkey"]
+    nibble_groups = " ".join(f"{int(digit, 16):04b}" for digit in subkey)
+    verify_key = Puzzle(
+        "subkey", "Verify the round subkey", "LO3", "Convert the PC-2 output into 12 hexadecimal digits.",
+        subkey, f"K{shifted['number']} is verified: {subkey}.",
+        example("Each four-bit group is one hex digit.", "0000 1010 0110 → 0A6.",
+                "Read the 12 groups left to right and preserve leading zeros."),
+        "text", {"signals": [("PC-2 output", nibble_groups)]},
+    )
+    round_values = mission.encryption["rounds"][mission.selected_round - 1]
+    low_left = round_values["l_in"][-2:]
+    low_p = round_values["permuted"][-2:]
+    mix_left = Puzzle(
+        "feistel_xor", "Mix the previous left register", "LO4", "XOR the displayed bytes. Enter two hexadecimal digits.",
+        round_values["r_out"][-2:], f"Feistel XOR verified. The full new right register is {round_values['r_out']}.",
+        example("The new right is old left XOR the P result.", "Hexadecimal 9 XOR 3 is A.",
+                "Apply XOR to the two displayed bytes and preserve the leading zero if present."),
+        "text", {"signals": [("Old L, last byte", low_left), ("P result, last byte", low_p)]},
+    )
+    mission.rooms = (gate, (*vault, verify_key), (*reactor[:4], mix_left, *reactor[4:]), exit_room)
+    return mission

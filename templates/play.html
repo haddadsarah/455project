@@ -1,6 +1,15 @@
 {% extends "base.html" %}
+{% load static %}
+{% block head %}{% if room %}
+<link rel="stylesheet" href="{% static 'escape.css' %}">
+<script src="{% static 'lessons.js' %}" defer></script>
+<script src="{% static 'lesson-ui.js' %}" defer></script>
+<script src="{% static 'classroom-escape.js' %}" defer></script>
+{% endif %}{% endblock %}
+{% block body_class %}{% if room %}escape-playing{% endif %}{% endblock %}
 {% block title %}{% if room %}{{ room.short }}{% else %}Mission control{% endif %} · CipherBreak EDU{% endblock %}
 {% block content %}
+{% if room %}{% include "parts/classroom_escape.html" %}{% else %}
 <div class="shell game-layout" data-game data-room="{{ attempt.current_room }}" data-first-puzzle="{{ first_puzzle.code }}" data-first-example="{{ first_puzzle.hints.1 }}" data-tutorial-url="{% url 'tutorial' attempt.pk %}" data-auto="{% if global_auto %}onboarding{% elif room_auto %}room{% endif %}">
   <header class="mission-header">
     <div><p class="overline">{{ attempt.classification }} · {{ user.username }}</p><h1>{% if room %}{{ room.name }}{% elif attempt.stage == 'intro' %}Mission briefing{% else %}Facility lobby{% endif %}</h1></div>
@@ -29,81 +38,6 @@
     </div></section>
     <section id="map" data-tour-target="terminal" aria-label="Mission map">{% include "parts/room_map.html" with interactive=True %}</section>
     <section class="nova card" data-tour-target="hint"><span class="nova-icon" aria-hidden="true">✳</span><div><h2>NOVA hints</h2><p>Each room has a NOVA panel. Start with a rule, then ask for an example or a walkthrough if you need it.</p></div></section>
-  {% else %}
-  <div class="room-layout theme-{{ room.slug }}">
-    <div class="room-main">
-      <section class="scene scene-room {% if room_state.completed %}scene-open{% endif %}" data-tour-target="objective">
-        <div class="scene-copy"><p class="overline"><span class="status-light"></span> {{ room.place }} · {% if room_state.completed %}unlocked{% else %}sealed{% endif %}</p>
-          <h2>{% if room_state.completed %}Room cleared.{% else %}{{ room.topic }}{% endif %}</h2>
-          <p>{% if room_state.completed %}{{ room.summary }}{% else %}{{ room.intro }}{% endif %}</p>
-          {% if puzzle and not room_state.completed %}<a class="button button-small button-ghost" href="#terminal">Activate terminal</a>{% endif %}
-        </div>
-        <span class="scene-room-number" aria-hidden="true">0{{ room.number }}</span>
-      </section>
-
-      {% if room_state.completed %}
-      <section class="card cleared" aria-label="Room completion" data-tour-target="clear">
-        <p class="overline green">ACCESS GRANTED</p><h2>◇ {{ room.badge }}</h2>
-        <p>Room score {{ room_state.score }} pts · Includes a 50-point room bonus.</p>
-        {% if ciphertext %}<div class="sequence" data-sequence><button type="button" class="button button-small button-ghost" data-run-sequence>Replay 16-round encryption</button><div class="sequence-track" aria-hidden="true">{% for n in round_selector %}<span>{{ n }}</span>{% endfor %}</div><p class="sequence-value" aria-live="polite">Ciphertext <code>{{ ciphertext }}</code></p></div>{% endif %}
-        <div class="actions">
-          <form method="post" action="{% url 'navigate' attempt.pk %}">{% csrf_token %}
-          {% if room.number == 4 %}<input type="hidden" name="action" value="results"><button class="button button-green" type="submit">Open the exit</button>
-          {% else %}<input type="hidden" name="action" value="enter"><input type="hidden" name="room" value="{{ room.number|add:1 }}"><button class="button button-green" type="submit">Enter room {{ room.number|add:1 }}</button>{% endif %}
-          </form>
-          {% for step, progress in room_entries %}{% if step.optional and not attempt.completed_at %}<a class="button button-ghost" href="?puzzle={{ step.code }}#terminal">{% if progress.solved %}Review{% else %}Try{% endif %} optional S-box</a>{% endif %}{% endfor %}
-        </div>
-      </section>
-      {% endif %}
-
-      {% if decrypted and not room_state.completed %}
-        <section class="card sequence decrypt-sequence" data-sequence><h2>Reverse the signal</h2>
-          <button type="button" class="button button-small button-ghost" data-run-sequence>Run 16-round decryption</button>
-          <div class="sequence-track" aria-hidden="true">{% for n in round_selector reversed %}<span title="Subkey K{{ n }}">K{{ n }}</span>{% endfor %}</div>
-          <p class="sequence-value" aria-live="polite">Recovered block <code>{{ decrypted }}</code></p>
-        </section>
-      {% endif %}
-
-      {% if puzzle %}
-      <section class="card terminal" id="terminal" data-tour-target="terminal" data-widget="{{ puzzle.widget }}" data-puzzle="{{ puzzle.code }}" data-example="{{ puzzle.hints.1 }}">
-        <div class="terminal-heading"><div><p class="overline">{% if puzzle.optional %}OPTIONAL CHALLENGE{% else %}CHALLENGE {{ active_index }} OF {{ required_count }}{% endif %} · {{ puzzle.outcome }}</p><h2>{{ puzzle.title }}</h2></div><span class="terminal-icon" aria-hidden="true">{{ room.glyph }}</span></div>
-        <p class="puzzle-prompt">{{ puzzle.prompt }}</p>
-        {% if attempt.mode == "guided" %}<div class="concept-note"><p>{{ puzzle.hints.0 }}</p><details><summary>Worked example</summary><p>{{ puzzle.hints.1 }}</p><button type="button" class="nav-text" data-tour="room">Try a practice signal</button></details></div>{% endif %}
-        <form class="puzzle-form" method="post" action="{% url 'answer' attempt.pk %}" {% if puzzle.widget == "sbox" %}data-sbox-form{% endif %}>{% csrf_token %}
-          <input type="hidden" name="code" value="{{ puzzle.code }}"><input type="hidden" name="request_id" value="{{ request_id }}">
-          {% include "parts/puzzle.html" %}
-        </form>
-      </section>
-      {% endif %}
-      <details class="card map-panel" id="map"><summary>Facility map</summary>{% include "parts/room_map.html" with interactive=True %}</details>
-    </div>
-    <aside class="room-sidebar" aria-label="Room support">
-      <section class="card nova" id="nova" data-tour-target="hint">
-        <div class="nova-heading"><span class="nova-icon" aria-hidden="true">✳</span><div><h2>NOVA</h2><p>Lab assistant</p></div></div>
-        {% if puzzle and not state.solved %}
-        <p>{% if hint_lines %}Try the latest hint, then return to the terminal.{% elif attempt.mode == "guided" %}{{ puzzle.hints.0 }}{% else %}Ask for a hint if you get stuck.{% endif %}</p>
-        {% if hint_lines %}<ol class="hint-list">{% for line in hint_lines %}<li><strong>{% if forloop.counter == 1 %}Concept{% elif forloop.counter == 2 %}Example{% else %}Walkthrough{% endif %}</strong><p>{{ line }}</p></li>{% endfor %}</ol>{% endif %}
-        {% if next_hint <= 3 %}
-          <form method="post" action="{% url 'hint' attempt.pk %}">{% csrf_token %}<input type="hidden" name="code" value="{{ puzzle.code }}"><input type="hidden" name="level" value="{{ next_hint }}"><button class="button button-small button-ghost" type="submit">Hint {{ next_hint }} · −{% if next_hint == 1 %}10{% elif next_hint == 2 %}20{% else %}30{% endif %} pts max</button></form>
-        {% endif %}
-        <button class="nav-text" type="button" data-tour="room">Try tutorial example</button>
-        {% elif room_state.completed %}<p>“{{ room.summary }}”</p><button class="nav-text" type="button" data-tour="room">Replay room tutorial</button>
-        {% else %}<p>Review the terminal output, or use the checklist to return to your next challenge.</p>{% endif %}
-        <details class="plain-details"><summary>Scoring rules</summary><p>Earn 100 base points for a correct answer and 10 extra for a first try. Each mistake deducts 10. Your highest hint level deducts 10, 20, or 30 points. Puzzle scores stay at or above zero. Each room adds 50 points.</p></details>
-      </section>
-      <section class="card room-checklist">
-        <h2>Room progress</h2><p>{{ room_percent }}% of required puzzles</p><progress max="100" value="{{ room_percent }}" aria-label="Required room puzzles completed"></progress>
-        {% if room.slug == "reactor" %}<p class="mono green">ACTIVE ROUND {{ round_number }} / 16</p>{% endif %}
-        <ol>{% for step, progress in room_entries %}
-          <li class="{% if progress.solved %}is-done{% elif puzzle.code == step.code %}is-current{% endif %}">
-            <span aria-hidden="true">{% if progress.solved %}✓{% elif puzzle.code == step.code %}●{% else %}○{% endif %}</span>
-            {% if progress.solved %}<a href="?puzzle={{ step.code }}#terminal" aria-label="Review {{ step.title }}">{{ step.title }}</a>{% else %}<span>{{ step.title }}{% if step.optional %} <small>(optional)</small>{% endif %}</span>{% endif %}
-          </li>
-        {% endfor %}</ol>
-        {% if state.solved and not room_state.completed %}<a href="{% url 'play' attempt.pk %}#terminal">Return to current puzzle</a>{% endif %}
-      </section>
-    </aside>
-  </div>
   {% endif %}
 
   <nav class="mission-nav" aria-label="Mission navigation">
@@ -125,4 +59,5 @@
     </div>
   </section>
 </div>
+{% endif %}
 {% endblock %}

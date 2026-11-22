@@ -93,3 +93,27 @@ Pass `--chromium /path/to/chromium` to use an installed Chromium. Use `--base-ur
 ## Scope
 
 The project is intended for local classroom demonstrations and formative assessment. It uses SQLite and Django development settings by default. Database progress survives a server restart. To retain logins across restarts, configure a stable `CIPHERBREAK_SECRET_KEY`. Any shared deployment needs separate hosting configuration and operational review. Independent mode records assistance in the app, while students can still use outside resources. Instructor analytics describe observed results and do not measure causal impact.
+
+## Immersive presentation edition
+
+[Play CipherBreak EDU](https://cipherbreak-edu-escape.youngcondor1.chatgpt.site) in a regular browser. Start in Guided mode, collect the access card, open a machine, and work through its example and practice before repairing the live signal. Challenge mode starts at the independent task. The public edition stores scores and an attempt history on the device. Sign-in, classroom data, and CSV reports are features of the Django edition.
+
+### Local course-test accounts
+
+After installing and migrating with the local commands above, run:
+
+```sh
+python manage.py course_demo
+python manage.py runserver
+```
+
+When prompted, enter the two development passwords supplied in the private redesign brief. The command creates `demo_student` and `demo_professor`, a playable attempt, and a classroom with a completed sample attempt. Repeating the command refreshes the credentials while preserving progress. It refuses to run in production mode. For unattended local testing, use the `CIPHERBREAK_DEMO_STUDENT_PASSWORD` and `CIPHERBREAK_DEMO_PROFESSOR_PASSWORD` environment variables. Keep the real deployment free of this local database and these credentials.
+
+### Verify the redesign
+
+```sh
+python manage.py test
+python tests/browser_smoke.py --base-url http://127.0.0.1:8000/
+```
+
+To verify all four rooms of the browser edition locally, run `python -m http.server 8767 --directory docs`, then `python tests/presentation_browser.py http://127.0.0.1:8767/` from another terminal. Both browser checks use Playwright. See [lesson design and assessment evidence](EDUCATION.md) for the operation-by-operation curriculum.

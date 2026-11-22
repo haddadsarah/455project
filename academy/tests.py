@@ -1,5 +1,6 @@
 import csv
 import io
+from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
@@ -9,10 +10,10 @@ from django.core.management.base import CommandError
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
-from . import des, game
+from . import des, game, lessons
 from .curriculum import ASSESSMENTS, OUTCOMES
 from .models import Assessment, Assignment, Attempt, Classroom, Membership, Mode
-from .puzzles import build_mission
+from .puzzles import build_mission, build_mission_v2
 
 BLOCK = "0123456789ABCDEF"
 KEY = "133457799BBCDFF1"
@@ -116,9 +117,21 @@ class ApplicationFlowTests(TestCase):
         return self.client.post(reverse("navigate", args=[pk]), {"action": action, **extra})
 
     def submit(self, pk, puzzle, answer=None, request_id=None):
-        return self.client.post(reverse("answer", args=[pk]), {
-            "code": puzzle.code, "answer": puzzle.answer if answer is None else answer, "request_id": request_id or uuid4(),
-        }, follow=True)
+        attempt = Attempt.objects.get(pk=pk)
+        room = attempt.rooms.get(number=attempt.current_room)
+        progress = room.puzzles.get(code=puzzle.code)
+        tutorial = reverse("tutorial", args=[pk])
+        if room.number == 1 and not room.clue_collected:
+            self.client.post(tutorial, {"kind": "collected"})
+        if attempt.mode == Mode.GUIDED and progress.lesson_stage < 3 and not progress.solved:
+            for action in ("learn", "demonstrate", "practice"):
+                self.client.post(tutorial, {"kind": "lesson", "code": puzzle.code,
+                                            "action": action, "answer": lessons.practice_answer(puzzle)})
+        data = {"code": puzzle.code, "answer": puzzle.answer if answer is None else answer,
+                "request_id": request_id or uuid4()}
+        if puzzle.widget == "sbox":
+            data["sbox_row"], data["sbox_col"] = data["answer"].split(",")
+        return self.client.post(reverse("answer", args=[pk]), data, follow=True)
 
     def finish_room(self, pk, mission, number):
         self.assertEqual(self.navigation(pk, "enter", room=number).status_code, 302)
@@ -190,7 +203,7 @@ class ApplicationFlowTests(TestCase):
         self.assertContains(self.client.get(url, follow=True), "the Cipher Lab!")
         attempt.refresh_from_db()
         self.assertEqual(attempt.percent, 100)
-        self.assertEqual(attempt.score, 19 * 110 - 50 + 4 * 50)
+        self.assertEqual(attempt.score, 21 * 110 - 50 + 4 * 50)
         self.assertEqual(self.student.earned_badges.count(), 6)
         self.assertContains(self.client.get(reverse("notebook", args=[pk])), "Security limitations")
         post = {code: question[2] for code, question in zip(OUTCOMES, ASSESSMENTS["post"], strict=True)}
@@ -275,6 +288,43 @@ class ApplicationFlowTests(TestCase):
         self.assertEqual(self.client.get(page).status_code, 404)
         self.assertEqual(self.client.get(export).status_code, 404)
 
+    def test_guided_lesson_requires_correct_practice_and_persists_during_resume(self):
+        pk = self.start()
+        self.navigation(pk, "briefed")
+        self.navigation(pk, "enter", room=1)
+        attempt = Attempt.objects.get(pk=pk)
+        task = game.mission_for(attempt).rooms[0][0]
+        lesson_url = reverse("tutorial", args=[pk])
+        answer_url = reverse("answer", args=[pk])
+        data = {"code": task.code, "answer": task.answer, "request_id": uuid4()}
+        response = self.client.post(answer_url, data, follow=True)
+        self.assertContains(response, "Verify the guided practice signal")
+        def lesson(action, answer=""):
+            return self.client.post(lesson_url, {"kind": "lesson", "code": task.code,
+                                                 "action": action, "answer": answer}).json()
+
+        self.assertEqual(lesson("practice", lessons.practice_answer(task))["stage"], 0)
+        self.assertEqual(lesson("learn")["stage"], 1)
+        self.assertEqual(lesson("demonstrate")["stage"], 2)
+        self.assertFalse(lesson("practice", "00?")["correct"])
+        self.client.logout()
+        self.client.login(username=self.student.username, password=PASSWORD)
+        self.assertContains(self.client.get(reverse("play", args=[pk])), 'data-stage="2"')
+        self.assertTrue(lesson("practice", lessons.practice_answer(task))["correct"])
+        self.assertContains(self.client.post(answer_url, data, follow=True), "Collect the access card")
+        self.assertTrue(self.client.post(lesson_url, {"kind": "collected"}).json()["collected"])
+        self.assertContains(self.client.post(answer_url, data, follow=True), "Access block verified")
+
+    def test_generation_preserves_prior_missions(self):
+        seed = "preserve-existing-adventure"
+        old = build_mission(seed)
+        updated = build_mission_v2(seed)
+        self.assertEqual(old.encryption, updated.encryption)
+        self.assertEqual(old.message, updated.message)
+        added = [p for room in updated.rooms for p in room
+                 if p.code not in {q.code for puzzles in old.rooms for q in puzzles}]
+        self.assertEqual([p.code for p in added], ["subkey", "feistel_xor"])
+
     def test_forms_enforce_csrf(self):
         browser = Client(enforce_csrf_checks=True)
         browser.force_login(self.student)
@@ -303,3 +353,19 @@ class DemoSetupTests(TestCase):
         self.assertFalse(users.filter(pk=previous_id).exists())
         self.assertTrue(users.filter(pk=real_user.pk).exists())
         self.assertEqual(Classroom.objects.filter(code="DEMO455").count(), 1)
+
+
+    @override_settings(DEBUG=True)
+    @patch.dict("os.environ", {"CIPHERBREAK_DEMO_STUDENT_PASSWORD": "test-course-student-only",
+                              "CIPHERBREAK_DEMO_PROFESSOR_PASSWORD": "test-course-professor-only"})
+    def test_course_demo_is_repeatable_and_uses_hashed_credentials(self):
+        for _ in range(2):
+            call_command("course_demo", stdout=io.StringIO())
+        users = get_user_model().objects
+        student = users.get(username="demo_student")
+        professor = users.get(username="demo_professor")
+        self.assertTrue(student.check_password("test-course-student-only"))
+        self.assertTrue(professor.check_password("test-course-professor-only"))
+        self.assertEqual(student.attempts.count(), 2)
+        self.assertTrue(game.is_instructor(professor))
+        self.assertEqual(professor.classrooms.count(), 1)
